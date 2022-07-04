@@ -29,10 +29,16 @@ export default function Home() {
 	const gasApi = useFetch('https://gas.best/stats')
 	const gasPrice = gasApi.data?.pending?.fee
 	const ethPrice = gasApi.data?.ethPrice
-	const gasAmount = 325000
+	const commitGasAmount = 46267
+	const registrationGasAmount = 280000
+	const gasAmount = commitGasAmount + registrationGasAmount
+	const commitCost = parseFloat(
+		ethPrice * gasPrice * commitGasAmount * 0.000000001
+	)
 	const registrationCost = parseFloat(
-		(ethPrice * gasPrice * gasAmount * 0.000000001) + ((durationToRegister || 1) * 5)
-	).toFixed(2)
+		(ethPrice * gasPrice * registrationGasAmount * 0.000000001) + ((durationToRegister || 1) * 5)
+	)
+	const totalCost = parseFloat(commitCost + registrationCost).toFixed(2)
 
 	return (
 		<>
@@ -163,10 +169,19 @@ export default function Home() {
 							}
 						/>
 					</div>
-					<Button type="submit" variant="action" suffix={!gasApi.isLoading && `($${registrationCost})`}>
+					<Button type="submit" variant="action" suffix={!gasApi.isLoading && `($${totalCost})`}>
 						Register
 					</Button>
-					<Registration open={dialogOpen} setIsOpen={setDialogOpen} />
+					<Registration
+						cost={totalCost}
+						commitCost={commitCost}
+						duration={durationToRegister}
+						name={nameToRegister}
+						open={dialogOpen}
+						owner={ownerToRegister}
+						registrationCost={registrationCost}
+						setIsOpen={setDialogOpen}
+					/>
 				</form>
 			</div>
 			<Toaster position="bottom-center" />

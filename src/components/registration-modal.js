@@ -1,16 +1,38 @@
 import { Dialog } from '@ensdomains/thorin'
-import { Typography } from '@ensdomains/thorin'
+import { Typography, Button } from '@ensdomains/thorin'
 
-export default function Registration({ open, setIsOpen }) {
+export default function Registration({
+	cost,
+	commitCost,
+	duration,
+	name,
+	open,
+	owner,
+	registrationCost,
+	setIsOpen
+}) {
 	return (
 		<>
 			<Dialog
 				open={open}
-				subtitle="Dialog Subtitle"
-				title="Dialog Title"
+				title={`Register ${name}.eth`}
+				variant="actionable"
+				leading={
+					<Button
+						shadowless
+						variant="secondary"
+						onClick={() => setIsOpen(false)}
+					>
+						Cancel
+					</Button>
+				}
+				trailing={<Button shadowless>Begin</Button>}
+				style={{
+					
+				}}
 				onDismiss={() => setIsOpen(false)}
 			>
-				<Typography>Dialog text content.</Typography>
+				<Typography>Registering an ENS is a 2 step process. The first transaction is ${ commitCost.toFixed(2) } and the 2nd is ${ registrationCost.toFixed(2) }.</Typography>
 			</Dialog>
 		</>
 	)
