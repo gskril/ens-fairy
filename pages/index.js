@@ -1,10 +1,10 @@
 import Head from 'next/head'
 import { ethers } from 'ethers'
 import { useState } from 'react'
-import { useProvider } from 'wagmi'
 import { Input } from '@ensdomains/thorin'
 import { Button } from '@ensdomains/thorin'
 import { Heading } from '@ensdomains/thorin'
+import { useAccount, useProvider } from 'wagmi'
 import { Typography } from '@ensdomains/thorin'
 import toast, { Toaster } from 'react-hot-toast'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -18,6 +18,7 @@ export default function Home() {
 	const [durationToRegister, setDurationToRegister] = useState('')
 
 	const provider = useProvider()
+	const { address: isConnected } = useAccount()
 	const ethRegistrar = new ethers.Contract(
 		ensRegistrarAddr,
 		ensRegistrarAbi,
@@ -53,6 +54,11 @@ export default function Home() {
 					onSubmit={async (e) => {
 						e.preventDefault()
 
+						// Check wallet connection
+						if (!isConnected) {
+							return toast.error('Connect your wallet')
+						}
+
 						// Check if all fields are filled
 						if (
 							nameToRegister.length < 3 ||
@@ -60,7 +66,18 @@ export default function Home() {
 							durationToRegister < 1
 						) {
 							return toast.error(
-								'Please fill out all fields correctly.'
+								'Please fill out all fields correctly'
+							)
+						}
+
+						if (nameToRegister.length < 5) {
+							return toast.error(
+								'We only support 5+ character names',
+								{
+									style: {
+										maxWidth: '100%',
+									},
+								}
 							)
 						}
 
