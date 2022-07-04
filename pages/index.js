@@ -1,6 +1,7 @@
 import Head from 'next/head'
 import { ethers } from 'ethers'
 import { useState } from 'react'
+import useFetch from '../hooks/fetch'
 import { Input } from '@ensdomains/thorin'
 import { Button } from '@ensdomains/thorin'
 import { Heading } from '@ensdomains/thorin'
@@ -24,6 +25,14 @@ export default function Home() {
 		ensRegistrarAbi,
 		provider
 	)
+
+	const gasApi = useFetch('https://gas.best/stats')
+	const gasPrice = gasApi.data?.pending?.fee
+	const ethPrice = gasApi.data?.ethPrice
+	const gasAmount = 325000
+	const registrationCost = parseFloat(
+		(ethPrice * gasPrice * gasAmount * 0.000000001) + ((durationToRegister || 1) * 5)
+	).toFixed(2)
 
 	return (
 		<>
@@ -154,7 +163,7 @@ export default function Home() {
 							}
 						/>
 					</div>
-					<Button type="submit" variant="action" suffix={'($18.36)'}>
+					<Button type="submit" variant="action" suffix={!gasApi.isLoading && `($${registrationCost})`}>
 						Register
 					</Button>
 					<Registration open={dialogOpen} setIsOpen={setDialogOpen} />
