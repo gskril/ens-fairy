@@ -37,3 +37,19 @@ body {
   flex-direction: column;
   gap: 1rem;
 }
+
+@media screen and (max-width: 44em) {
+  .col {
+    flex-direction: column;
+  }
+}
+
+@media screen and (max-width: 27em) {
+  .header {
+    justify-content: center;
+  }
+
+  .header__name {
+    display: none;
+  }
+}

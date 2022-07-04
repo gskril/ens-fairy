@@ -12,7 +12,12 @@ export default function Home() {
 				<title>ENS Fairy</title>
 			</Head>
 			<header className="header">
-				<Typography as="span" variant="extraLarge" weight="bold">
+				<Typography
+					as="span"
+					variant="extraLarge"
+					weight="bold"
+					className="header__name"
+				>
 					ENS Fairy
 				</Typography>
 				<ConnectButton showBalance={false} />
