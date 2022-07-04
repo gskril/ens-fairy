@@ -83,7 +83,7 @@ export default function Home() {
 
 						// Validate name
 						const isNameAvailable = await ethRegistrar.available(
-							nameToRegister
+							nameToRegister.toLowerCase()
 						)
 						if (!isNameAvailable) {
 							return toast.error(
@@ -103,7 +103,7 @@ export default function Home() {
 								if (resolvedName) {
 									isValidOwner = true
 								}
-							} catch {}
+							} catch { }
 						}
 
 						if (!isValidOwner) {
@@ -122,6 +122,7 @@ export default function Home() {
 							maxLength="42"
 							required
 							spellCheck="false"
+							autoCapitalize="none"
 							suffix=".eth"
 							parentStyles={{ backgroundColor: '#fff' }}
 							onChange={(e) => setNameToRegister(e.target.value)}
@@ -132,6 +133,7 @@ export default function Home() {
 							maxLength="42"
 							required
 							spellCheck="false"
+							autoCapitalize="none"
 							parentStyles={{
 								width: '20rem',
 								backgroundColor: '#fff',
