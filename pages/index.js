@@ -3,6 +3,7 @@ import { Input } from '@ensdomains/thorin'
 import { Button } from '@ensdomains/thorin'
 import { Heading } from '@ensdomains/thorin'
 import { Typography } from '@ensdomains/thorin'
+import toast, { Toaster } from 'react-hot-toast'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 export default function Home() {
@@ -30,7 +31,13 @@ export default function Home() {
 				>
 					Register an ENS name directly to another address
 				</Heading>
-				<form className="form">
+				<form
+					className="form"
+					onSubmit={(e) => {
+						e.preventDefault()
+						toast.success('Name registered!')
+					}}
+				>
 					<div className="col">
 						<Input
 							label="Name"
@@ -62,11 +69,12 @@ export default function Home() {
 							parentStyles={{ overflow: 'hidden' }}
 						/>
 					</div>
-					<Button type="submit" variant="action">
+					<Button type="submit" variant="action" suffix={'($18.36)'}>
 						Register
 					</Button>
 				</form>
 			</div>
+			<Toaster position="bottom-center" />
 		</>
 	)
 }
