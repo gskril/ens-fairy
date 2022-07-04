@@ -1,12 +1,29 @@
 import Head from 'next/head'
+import { ethers } from 'ethers'
+import { useState } from 'react'
+import { useProvider } from 'wagmi'
 import { Input } from '@ensdomains/thorin'
 import { Button } from '@ensdomains/thorin'
 import { Heading } from '@ensdomains/thorin'
 import { Typography } from '@ensdomains/thorin'
 import toast, { Toaster } from 'react-hot-toast'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import Registration from '../components/registration-modal'
+import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
 
 export default function Home() {
+	const [dialogOpen, setDialogOpen] = useState(false)
+	const [nameToRegister, setNameToRegister] = useState('')
+	const [ownerToRegister, setOwnerToRegister] = useState('')
+	const [durationToRegister, setDurationToRegister] = useState('')
+
+	const provider = useProvider()
+	const ethRegistrar = new ethers.Contract(
+		ensRegistrarAddr,
+		ensRegistrarAbi,
+		provider
+	)
+
 	return (
 		<>
 			<Head>
@@ -33,20 +50,64 @@ export default function Home() {
 				</Heading>
 				<form
 					className="form"
-					onSubmit={(e) => {
+					onSubmit={async (e) => {
 						e.preventDefault()
-						toast.success('Name registered!')
+
+						// Check if all fields are filled
+						if (
+							nameToRegister.length < 3 ||
+							ownerToRegister.length < 7 ||
+							durationToRegister < 1
+						) {
+							return toast.error(
+								'Please fill out all fields correctly.'
+							)
+						}
+
+						// Validate name
+						const isNameAvailable = await ethRegistrar.available(
+							nameToRegister
+						)
+						if (!isNameAvailable) {
+							return toast.error(
+								`${nameToRegister}.eth is not available`
+							)
+						}
+
+						// Validate owner
+						let isValidOwner = false
+						if (ethers.utils.isAddress(ownerToRegister)) {
+							isValidOwner = true
+						} else {
+							try {
+								const resolvedName = await provider.resolveName(
+									ownerToRegister
+								)
+								if (resolvedName) {
+									isValidOwner = true
+								}
+							} catch {}
+						}
+
+						if (!isValidOwner) {
+							return toast.error(
+								`${ownerToRegister} is not a valid address`
+							)
+						}
+
+						setDialogOpen(true)
 					}}
 				>
 					<div className="col">
 						<Input
 							label="Name"
-							placeholder="gregskril.eth"
+							placeholder="gregskril"
 							maxLength="42"
 							required
 							spellCheck="false"
-							style={{ backgroundColor: '#fff' }}
-							parentStyles={{ overflow: 'hidden' }}
+							suffix=".eth"
+							parentStyles={{ backgroundColor: '#fff' }}
+							onChange={(e) => setNameToRegister(e.target.value)}
 						/>
 						<Input
 							label="Owner"
@@ -54,8 +115,11 @@ export default function Home() {
 							maxLength="42"
 							required
 							spellCheck="false"
-							style={{ width: '20rem', backgroundColor: '#fff' }}
-							parentStyles={{ overflow: 'hidden' }}
+							parentStyles={{
+								width: '20rem',
+								backgroundColor: '#fff',
+							}}
+							onChange={(e) => setOwnerToRegister(e.target.value)}
 						/>
 						<Input
 							label="Duration"
@@ -65,13 +129,16 @@ export default function Home() {
 							required
 							min={1}
 							max={10}
-							style={{ backgroundColor: '#fff' }}
-							parentStyles={{ overflow: 'hidden' }}
+							parentStyles={{ backgroundColor: '#fff' }}
+							onChange={(e) =>
+								setDurationToRegister(e.target.value)
+							}
 						/>
 					</div>
 					<Button type="submit" variant="action" suffix={'($18.36)'}>
 						Register
 					</Button>
+					<Registration open={dialogOpen} setIsOpen={setDialogOpen} />
 				</form>
 			</div>
 			<Toaster position="bottom-center" />
