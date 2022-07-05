@@ -23,12 +23,14 @@ export default function Home() {
 		provider
 	)
 
+	// Live Ethereum stats
 	const gasApi = useFetch('https://gas.best/stats')
 	const gasPrice = gasApi.data?.pending?.fee
 	const ethPrice = gasApi.data?.ethPrice
+
+	// Cost estimates
 	const commitGasAmount = 46267
 	const registrationGasAmount = 280000
-	const gasAmount = commitGasAmount + registrationGasAmount
 	const commitCost = parseFloat(
 		ethPrice * gasPrice * commitGasAmount * 0.000000001
 	)
@@ -36,7 +38,6 @@ export default function Home() {
 		ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
 			(durationToRegister || 1) * 5
 	)
-	const totalCost = parseFloat(commitCost + registrationCost).toFixed(2)
 
 	return (
 		<>
@@ -170,12 +171,17 @@ export default function Home() {
 					<Button
 						type="submit"
 						variant="action"
-						suffix={!gasApi.isLoading && `($${totalCost})`}
+						suffix={
+							// Total cost of registration
+							!gasApi.isLoading &&
+							`($${parseFloat(
+								commitCost + registrationCost
+							).toFixed(2)})`
+						}
 					>
 						Register
 					</Button>
 					<Registration
-						cost={totalCost}
 						commitCost={commitCost}
 						duration={durationToRegister}
 						name={nameToRegister}

@@ -7,7 +7,6 @@ import {
 } from '@ensdomains/thorin'
 
 export default function Registration({
-	cost,
 	commitCost,
 	duration,
 	name,
