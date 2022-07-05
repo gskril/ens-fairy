@@ -9,7 +9,7 @@ export default function Registration({
 	open,
 	owner,
 	registrationCost,
-	setIsOpen
+	setIsOpen,
 }) {
 	return (
 		<>
@@ -27,12 +27,13 @@ export default function Registration({
 					</Button>
 				}
 				trailing={<Button shadowless>Begin</Button>}
-				style={{
-					
-				}}
 				onDismiss={() => setIsOpen(false)}
 			>
-				<Typography>Registering an ENS is a 2 step process. The first transaction is ${ commitCost.toFixed(2) } and the 2nd is ${ registrationCost.toFixed(2) }.</Typography>
+				<Typography>
+					Registering an ENS is a 2 step process. The first
+					transaction is ${commitCost.toFixed(2)} and the 2nd is $
+					{registrationCost.toFixed(2)}.
+				</Typography>
 			</Dialog>
 		</>
 	)

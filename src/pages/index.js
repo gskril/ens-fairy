@@ -36,7 +36,8 @@ export default function Home() {
 		ethPrice * gasPrice * commitGasAmount * 0.000000001
 	)
 	const registrationCost = parseFloat(
-		(ethPrice * gasPrice * registrationGasAmount * 0.000000001) + ((durationToRegister || 1) * 5)
+		ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
+			(durationToRegister || 1) * 5
 	)
 	const totalCost = parseFloat(commitCost + registrationCost).toFixed(2)
 
@@ -118,7 +119,7 @@ export default function Home() {
 								if (resolvedName) {
 									isValidOwner = true
 								}
-							} catch { }
+							} catch {}
 						}
 
 						if (!isValidOwner) {
@@ -169,7 +170,11 @@ export default function Home() {
 							}
 						/>
 					</div>
-					<Button type="submit" variant="action" suffix={!gasApi.isLoading && `($${totalCost})`}>
+					<Button
+						type="submit"
+						variant="action"
+						suffix={!gasApi.isLoading && `($${totalCost})`}
+					>
 						Register
 					</Button>
 					<Registration
