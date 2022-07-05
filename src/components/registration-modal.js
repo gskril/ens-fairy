@@ -221,7 +221,7 @@ export default function Registration({
 								>
 									{waitForRegister.isLoading ? (
 										<Spinner color="accent" />
-									) : waitForRegister.data.status === 1 ? (
+									) : waitForRegister.data?.status === 1 ? (
 										// Name registered successfully
 										<svg
 											width="24"
