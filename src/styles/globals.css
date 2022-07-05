@@ -44,6 +44,21 @@ body {
   }
 }
 
+/* Thorin dialog on desktop */
+@media screen and (min-width: 640px) {
+  .modal .modal {
+    width: 35rem !important;
+  }
+}
+
+/* Thorin dialog on mobile */
+@media screen and (max-width: 639px) {
+  .modal .modal {
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+}
+
 @media screen and (max-width: 27em) {
   .header {
     justify-content: center;

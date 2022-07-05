@@ -15,6 +15,7 @@ export default function Registration({
 		<>
 			<Dialog
 				open={open}
+				className="modal"
 				title={`Register ${name}.eth`}
 				variant="actionable"
 				leading={
