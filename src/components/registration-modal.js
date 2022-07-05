@@ -1,4 +1,10 @@
-import { Button, Dialog, Typography } from '@ensdomains/thorin'
+import {
+	Button,
+	Dialog,
+	Skeleton,
+	Spinner,
+	Typography,
+} from '@ensdomains/thorin'
 
 export default function Registration({
 	cost,
@@ -29,12 +35,60 @@ export default function Registration({
 				trailing={<Button shadowless>Begin</Button>}
 				onDismiss={() => setIsOpen(false)}
 			>
-				<Typography>
-					Registering an ENS is a 2 step process. The first
-					transaction is ${commitCost.toFixed(2)} and the 2nd is $
-					{registrationCost.toFixed(2)}.
-				</Typography>
+				<div>
+					<Typography
+						as="p"
+						size="base"
+						style={{ marginBottom: '1rem' }}
+					>
+						Registering an ENS name is a two step process. In
+						between the steps, there is a 1 minute waiting period.
+						This is to protect you from a bad actor front-running
+						your registration.
+					</Typography>
+					<Typography size="base" weight="medium">
+						<ul className="steps">
+							<li className="step">
+								<Skeleton
+									loading={false}
+									style={{
+										borderRadius: '100%',
+										backgroundColor: 'rgba(0,0,0,0.15)',
+									}}
+								>
+									<Spinner color="accent" />
+								</Skeleton>
+								Commit - ${commitCost.toFixed(2)}
+							</li>
+							<li className="step">
+								<Skeleton
+									loading={true}
+									style={{
+										borderRadius: '100%',
+										backgroundColor: 'rgba(0,0,0,0.15)',
+									}}
+								>
+									<Spinner color="accent" />
+								</Skeleton>
+								Register - ${registrationCost.toFixed(2)}
+							</li>
+						</ul>
+					</Typography>
+				</div>
 			</Dialog>
+
+			<style jsx>{`
+				.steps {
+					display: flex;
+					flex-direction: column;
+					gap: 0.5rem;
+				}
+
+				.step {
+					display: flex;
+					gap: 0.5rem;
+				}
+			`}</style>
 		</>
 	)
 }

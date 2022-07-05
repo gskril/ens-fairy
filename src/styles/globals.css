@@ -47,7 +47,8 @@ body {
 /* Thorin dialog on desktop */
 @media screen and (min-width: 640px) {
   .modal .modal {
-    width: 35rem !important;
+    width: 35rem;
+    justify-content: center;
   }
 }
 
