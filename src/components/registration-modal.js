@@ -1,5 +1,4 @@
-import { Dialog } from '@ensdomains/thorin'
-import { Typography, Button } from '@ensdomains/thorin'
+import { Button, Dialog, Typography } from '@ensdomains/thorin'
 
 export default function Registration({
 	cost,

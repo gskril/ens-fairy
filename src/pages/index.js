@@ -2,15 +2,12 @@ import Head from 'next/head'
 import { ethers } from 'ethers'
 import { useState } from 'react'
 import useFetch from '../hooks/fetch'
-import { Input } from '@ensdomains/thorin'
-import { Button } from '@ensdomains/thorin'
-import { Heading } from '@ensdomains/thorin'
 import { useAccount, useProvider } from 'wagmi'
-import { Typography } from '@ensdomains/thorin'
 import toast, { Toaster } from 'react-hot-toast'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Registration from '../components/registration-modal'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
+import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
 
 export default function Home() {
 	const [dialogOpen, setDialogOpen] = useState(false)
