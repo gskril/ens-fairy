@@ -1,3 +1,5 @@
+import crypto from 'crypto'
+import { useState } from 'react'
 import {
 	Button,
 	Dialog,
@@ -5,6 +7,8 @@ import {
 	Spinner,
 	Typography,
 } from '@ensdomains/thorin'
+import { useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi'
+import { ensRegistrarConfig, ensResolver } from '../lib/constants'
 
 export default function Registration({
 	commitCost,
@@ -15,6 +19,67 @@ export default function Registration({
 	registrationCost,
 	setIsOpen,
 }) {
+	const [secret, setSecret] = useState(
+		'0x' + crypto.randomBytes(32).toString('hex')
+	)
+	const durationInSeconds = duration * 365 * 24 * 60 * 60
+
+	// Contract read: make commitment
+	const commitment = useContractRead({
+		...ensRegistrarConfig,
+		functionName: open && 'makeCommitmentWithConfig',
+		args: [
+			name, // name
+			owner, // owner
+			secret, // secret
+			ensResolver, // resolver
+			owner, // addr
+		],
+	})
+
+	// Contract write: commit
+	const commit = useContractWrite({
+		...ensRegistrarConfig,
+		functionName: 'commit',
+		args: commitment?.data,
+	})
+
+	// Wait for commit to settle
+	const waitForCommit = useWaitForTransaction({
+		hash: commit?.data?.hash,
+	})
+
+	// Contract read: price
+	const price = useContractRead({
+		...ensRegistrarConfig,
+		functionName: open && 'rentPrice',
+		args: [name, durationInSeconds],
+		watch: true,
+	})
+
+	// Contract write: register
+	const register = useContractWrite({
+		...ensRegistrarConfig,
+		functionName: 'registerWithConfig',
+		args: [
+			name, // name
+			owner, // owner
+			durationInSeconds, // duration
+			secret, // secret
+			ensResolver, // resolver
+			owner, // addr
+		],
+		overrides: {
+			value: price.data,
+			gasLimit: '280000',
+		},
+	})
+
+	// Wait for register to settle
+	const waitForRegister = useWaitForTransaction({
+		hash: register?.data?.hash,
+	})
+
 	return (
 		<>
 			<Dialog

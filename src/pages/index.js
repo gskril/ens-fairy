@@ -116,6 +116,7 @@ export default function Home() {
 								)
 								if (resolvedName) {
 									isValidOwner = true
+									setOwnerToRegister(resolvedName)
 								}
 							} catch {}
 						}
