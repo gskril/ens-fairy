@@ -9,9 +9,18 @@ import {
 	Typography,
 } from '@ensdomains/thorin'
 import { ethers } from 'ethers'
-import { useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi'
-import { ensRegistrarConfig, ensResolver } from '../lib/constants'
+import {
+	ensRegistrarConfig,
+	ensResolver,
+	ensResolverRinkeby,
+} from '../lib/constants'
 import toast from 'react-hot-toast'
+import {
+	useContractRead,
+	useContractWrite,
+	useNetwork,
+	useWaitForTransaction,
+} from 'wagmi'
 
 export default function Registration({
 	commitCost,
@@ -27,6 +36,7 @@ export default function Registration({
 		'0x' + crypto.randomBytes(32).toString('hex')
 	)
 	const durationInSeconds = duration * 365 * 24 * 60 * 60
+	const { chain } = useNetwork()
 
 	// Contract read: make commitment
 	const commitment = useContractRead({
@@ -36,7 +46,7 @@ export default function Registration({
 			name, // name
 			owner, // owner
 			secret, // secret
-			ensResolver, // resolver
+			chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
 			owner, // addr
 		],
 	})
@@ -81,7 +91,7 @@ export default function Registration({
 			owner, // owner
 			durationInSeconds, // duration
 			secret, // secret
-			ensResolver, // resolver
+			chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
 			owner, // addr
 		],
 		overrides: {
@@ -142,9 +152,7 @@ export default function Registration({
 						<Button
 							as="a"
 							href={`https://${
-								register.data.gasPrice < 2000000000
-									? 'rinkeby.'
-									: ''
+								chain?.id === 4 ? 'rinkeby.' : ''
 							}etherscan.io/tx/${register.data.hash}`}
 							target="_blank"
 							rel="noreferrer"
@@ -283,11 +291,15 @@ export default function Registration({
 								{!isRegistered
 									? registrationCost.toFixed(2)
 									: parseFloat(
-											(ethers.utils.formatEther(
-												register.data?.gasPrice
-											) +
+											(Number(
 												ethers.utils.formatEther(
-													register.data?.value
+													register.data?.gasPrice
+												)
+											) +
+												Number(
+													ethers.utils.formatEther(
+														register.data?.value
+													)
 												)) *
 												ethPrice
 									  ).toFixed(2)}
