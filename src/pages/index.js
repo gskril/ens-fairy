@@ -43,6 +43,21 @@ export default function Home() {
 		<>
 			<Head>
 				<title>ENS Fairy</title>
+				<meta property="og:title" content="Ethereum Name Service" />
+				<meta property="twitter:card" content="summary_large_image" />
+				<meta property="twitter:creator" content="@gregskril" />
+				<meta
+					name="description"
+					content="Register an ENS name directly to another address"
+				/>
+				<meta
+					property="og:description"
+					content="Register an ENS name directly to another address"
+				/>
+				<meta
+					property="og:image"
+					content="https://ensfairy.com/sharing.png"
+				/>
 			</Head>
 			<header className="header">
 				<Typography
