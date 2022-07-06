@@ -8,6 +8,7 @@ import {
 	Spinner,
 	Typography,
 } from '@ensdomains/thorin'
+import { ethers } from 'ethers'
 import { useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi'
 import { ensRegistrarConfig, ensResolver } from '../lib/constants'
 import toast from 'react-hot-toast'
@@ -15,6 +16,7 @@ import toast from 'react-hot-toast'
 export default function Registration({
 	commitCost,
 	duration,
+	ethPrice,
 	name,
 	open,
 	owner,
@@ -44,6 +46,9 @@ export default function Registration({
 		...ensRegistrarConfig,
 		functionName: 'commit',
 		args: commitment?.data,
+		onError: (err) => {
+			toast.error(err.message)
+		},
 	})
 
 	// Wait for commit to settle
@@ -83,9 +88,13 @@ export default function Registration({
 			value: price.data,
 			gasLimit: '280000',
 		},
+		onError: (err) => {
+			toast.error(err.message)
+		},
 	})
 
 	// Wait for register to settle
+	const [isRegistered, setIsRegistered] = useState(false)
 	const waitForRegister = useWaitForTransaction({
 		hash: register?.data?.hash,
 		onSuccess: (data) => {
@@ -94,6 +103,7 @@ export default function Registration({
 				toast.error('Registration failed')
 			} else {
 				toast.success('Your name has been registered!')
+				setIsRegistered(true)
 			}
 		},
 	})
@@ -117,8 +127,18 @@ export default function Registration({
 					)
 				}
 				trailing={
-					register.data?.hash ? (
-						// Show Etherscan link
+					isRegistered ? (
+						// Link to ENS manager
+						<Button
+							as="a"
+							href={`https://app.ens.domains/name/${name}.eth/details`}
+							target="_blank"
+							rel="noreferrer"
+						>
+							Open ENS Manager
+						</Button>
+					) : register.data?.hash ? (
+						// Link to Etherscan
 						<Button
 							as="a"
 							href={`https://${
@@ -192,7 +212,15 @@ export default function Registration({
 										</svg>
 									)}
 								</Skeleton>
-								Commit - ${commitCost.toFixed(2)}
+								Commit - $
+								{!showCountdown
+									? // Show estimated cost, or real cost if the transaction has settled
+									  commitCost.toFixed(2)
+									: parseFloat(
+											ethers.utils.formatEther(
+												commit.data?.gasPrice
+											) * ethPrice
+									  ).toFixed(2)}
 							</li>
 							<li className="step">
 								<CountdownCircle
@@ -251,7 +279,18 @@ export default function Registration({
 										</svg>
 									)}
 								</Skeleton>
-								Register - ${registrationCost.toFixed(2)}
+								Register - $
+								{!isRegistered
+									? registrationCost.toFixed(2)
+									: parseFloat(
+											(ethers.utils.formatEther(
+												register.data?.gasPrice
+											) +
+												ethers.utils.formatEther(
+													register.data?.value
+												)) *
+												ethPrice
+									  ).toFixed(2)}
 							</li>
 						</ul>
 					</Typography>

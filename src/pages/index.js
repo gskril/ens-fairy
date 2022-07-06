@@ -185,6 +185,7 @@ export default function Home() {
 					<Registration
 						commitCost={commitCost}
 						duration={durationToRegister}
+						ethPrice={ethPrice}
 						name={nameToRegister}
 						open={dialogOpen}
 						owner={ownerToRegister}
