@@ -176,7 +176,14 @@ export default function Registration({
 						</Button>
 					)
 				}
-				onDismiss={() => setIsOpen(false)}
+				onDismiss={() => {
+					if (isRegistered) {
+						// Refresh the page on dialog exit after a registration to fully reset state
+						window.location.reload()
+					} else {
+						setIsOpen(false)
+					}
+				}}
 			>
 				<div>
 					<Typography
