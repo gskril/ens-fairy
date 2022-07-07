@@ -4,6 +4,7 @@ import {
 	Button,
 	CountdownCircle,
 	Dialog,
+	Heading,
 	Skeleton,
 	Spinner,
 	Typography,
@@ -21,6 +22,7 @@ import {
 	useNetwork,
 	useWaitForTransaction,
 } from 'wagmi'
+import Confetti from 'react-confetti'
 
 export default function Registration({
 	commitCost,
@@ -120,10 +122,28 @@ export default function Registration({
 
 	return (
 		<>
+			{isRegistered && (
+				<Confetti
+					colors={[
+						'#44BCFO',
+						'#7298F8',
+						'#A099FF',
+						'#DE82FF',
+						'#7F6AFF',
+					]}
+					style={{ zIndex: '1000' }}
+				/>
+			)}
 			<Dialog
 				open={open}
 				className="modal"
-				title={`Register ${name}.eth`}
+				title={
+					<Heading as="h2" align="center">
+						{isRegistered
+							? `You registered ${name}.eth!`
+							: `Register ${name}.eth`}
+					</Heading>
+				}
 				variant="actionable"
 				leading={
 					!commit.data && (
