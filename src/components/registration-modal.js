@@ -23,6 +23,7 @@ import {
 	useWaitForTransaction,
 } from 'wagmi'
 import Confetti from 'react-confetti'
+import useFetch from '../hooks/fetch'
 
 export default function Registration({
 	commitCost,
@@ -39,6 +40,11 @@ export default function Registration({
 	)
 	const durationInSeconds = duration * 365 * 24 * 60 * 60
 	const { chain } = useNetwork()
+
+	const resolveOwner = useFetch(
+		`https://api.ensideas.com/ens/resolve/${owner}`
+	)
+	const resolvedOwner = resolveOwner.data?.displayName
 
 	// Contract read: make commitment
 	const commitment = useContractRead({
@@ -140,7 +146,7 @@ export default function Registration({
 				title={
 					<Heading as="h2" align="center">
 						{isRegistered
-							? `You registered ${name}.eth!`
+							? `Registration Complete!`
 							: `Register ${name}.eth`}
 					</Heading>
 				}
@@ -206,15 +212,27 @@ export default function Registration({
 				}}
 			>
 				<div>
-					<Typography
-						as="p"
-						size="base"
-						style={{ marginBottom: '1.5rem' }}
-					>
-						Registering an ENS name is a two step process. In
-						between the steps, there is a 1 minute waiting period.
-						This is to protect you from a bad actor front-running
-						your registration.
+					<Typography size="base" style={{ marginBottom: '1.5rem' }}>
+						{isRegistered ? (
+							<>
+								<p>
+									You successfully registered {name}.eth and
+									sent it to {resolvedOwner}!
+								</p>
+								<p>
+									Name resolution is already setup, meaning
+									you can do things like send assets to the
+									name immediately.
+								</p>
+							</>
+						) : (
+							<p>
+								Registering an ENS name is a two step process.
+								In between the steps, there is a 1 minute
+								waiting period. This is to protect you from a
+								bad actor front-running your registration.
+							</p>
+						)}
 					</Typography>
 					<Typography size="base" weight="medium">
 						<ul className="steps">
@@ -257,19 +275,23 @@ export default function Registration({
 											) * ethPrice
 									  ).toFixed(2)}
 							</li>
-							<li className="step">
-								<CountdownCircle
-									countdownAmount={60}
-									disabled={!showCountdown}
-									style={{
-										transform:
-											'scale(0.75) translateX(-1rem)',
-										filter: showCountdown
-											? 'grayscale(0%)'
-											: 'grayscale(100%)',
-									}}
-								/>
-							</li>
+							{!isRegistered && (
+								<li className="step">
+									<CountdownCircle
+										countdownAmount={60}
+										disabled={!showCountdown}
+										style={{
+											marginTop: '-0.35rem',
+											marginBottom: '-0.35rem',
+											transform:
+												'scale(0.75) translateX(-1rem)',
+											filter: showCountdown
+												? 'grayscale(0%)'
+												: 'grayscale(100%)',
+										}}
+									/>
+								</li>
+							)}
 							<li className="step">
 								<Skeleton
 									loading={!register.data}
@@ -340,7 +362,7 @@ export default function Registration({
 				.steps {
 					display: flex;
 					flex-direction: column;
-					gap: 0.5rem;
+					gap: 0.75rem;
 				}
 
 				.step {
