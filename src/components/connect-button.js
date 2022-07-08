@@ -7,8 +7,8 @@ export default function ConnectButtonWrapper() {
 
 	return (
 		<ConnectButton.Custom>
-			{({ account, chain, openConnectModal }) => {
-				return !account ? (
+			{({ account, chain, openConnectModal, mounted }) => {
+				return !account || !mounted || !chain ? (
 					<div>
 						<Button onClick={() => openConnectModal()}>
 							Connect Wallet
@@ -17,24 +17,22 @@ export default function ConnectButtonWrapper() {
 				) : chain.unsupported ? (
 					<ConnectButton />
 				) : (
-					<>
-						<Profile
-							address={account.address}
-							ensName={account.ensName}
-							avatar={account.ensAvatar}
-							dropdownItems={[
-								{
-									label: `Balance: ${account.displayBalance}`,
-									disabled: true,
-								},
-								{
-									label: 'Disconnect',
-									color: 'red',
-									onClick: () => disconnect(),
-								},
-							]}
-						/>
-					</>
+					<Profile
+						address={account.address}
+						ensName={account.ensName}
+						avatar={account.ensAvatar}
+						dropdownItems={[
+							{
+								label: `Balance: ${account.displayBalance}`,
+								disabled: true,
+							},
+							{
+								label: 'Disconnect',
+								color: 'red',
+								onClick: () => disconnect(),
+							},
+						]}
+					/>
 				)
 			}}
 		</ConnectButton.Custom>
