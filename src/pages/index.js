@@ -2,12 +2,12 @@ import Head from 'next/head'
 import { ethers } from 'ethers'
 import { useState } from 'react'
 import useFetch from '../hooks/fetch'
-import { useAccount, useProvider } from 'wagmi'
 import toast, { Toaster } from 'react-hot-toast'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Registration from '../components/registration-modal'
+import { Button, Heading, Input } from '@ensdomains/thorin'
+import { useAccount, useNetwork, useProvider } from 'wagmi'
+import ConnectButtonWrapper from '../components/connect-button'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
-import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
 
 export default function Home() {
 	const [dialogOpen, setDialogOpen] = useState(false)
@@ -16,6 +16,7 @@ export default function Home() {
 	const [durationToRegister, setDurationToRegister] = useState('')
 
 	const provider = useProvider()
+	const { chain, chains } = useNetwork()
 	const { address: isConnected } = useAccount()
 	const ethRegistrar = new ethers.Contract(
 		ensRegistrarAddr,
@@ -60,14 +61,10 @@ export default function Home() {
 				/>
 			</Head>
 			<header className="header">
-				<Heading
-					as="span"
-					level="2"
-					className="header__name"
-				>
+				<Heading as="span" level="2" className="header__name">
 					ENS Fairy
 				</Heading>
-				<ConnectButton showBalance={false} />
+				<ConnectButtonWrapper />
 			</header>
 			<div className="container">
 				<Heading
@@ -85,6 +82,11 @@ export default function Home() {
 						// Check wallet connection
 						if (!isConnected) {
 							return toast.error('Connect your wallet')
+						}
+
+						// Check the connected chain
+						if (!chains.some((c) => c.id === chain.id)) {
+							return toast.error(`Switch to a supported network`)
 						}
 
 						// Check if all fields are filled
