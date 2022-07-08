@@ -42,9 +42,9 @@ export default function Registration({
 	const { chain } = useNetwork()
 
 	const resolveOwner = useFetch(
-		`https://api.ensideas.com/ens/resolve/${owner}`
+		open && `https://api.ensideas.com/ens/resolve/${owner}`
 	)
-	const resolvedOwner = resolveOwner.data?.displayName
+	const resolvedOwner = resolveOwner?.data?.displayName
 
 	// Contract read: make commitment
 	const commitment = useContractRead({
