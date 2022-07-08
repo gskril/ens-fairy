@@ -69,10 +69,11 @@ export default function Home() {
 			<div className="container">
 				<Heading
 					as="h1"
+					level="1"
 					align="center"
-					style={{ marginBottom: '2rem' }}
+					style={{ marginBottom: '2rem', lineHeight: '1' }}
 				>
-					Register an ENS name directly to another address
+					Gift an ENS name
 				</Heading>
 				<form
 					className="form"
@@ -159,7 +160,7 @@ export default function Home() {
 							onChange={(e) => setNameToRegister(e.target.value)}
 						/>
 						<Input
-							label="Owner"
+							label="Recipient"
 							placeholder="0xA0Cf…251e"
 							maxLength="42"
 							required

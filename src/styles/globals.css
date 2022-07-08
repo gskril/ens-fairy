@@ -78,12 +78,32 @@ p:not(:last-of-type) {
 }
 
 @media screen and (max-width: 34em) {
+  h1 {
+    font-size: 2.325rem !important;
+  }
+
   .header {
+    position: static;
     justify-content: center;
     padding: 2rem;
   }
 
+  .container {
+    min-height: unset;
+  }
+
   .header__name {
     display: none;
+  }
+}
+
+@media screen and (max-height: 48em) and (max-width: 44em) {
+  .header {
+    position: static;
+    padding: 2rem;
+  }
+
+  .container {
+    min-height: unset;
   }
 }
