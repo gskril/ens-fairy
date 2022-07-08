@@ -60,14 +60,13 @@ export default function Home() {
 				/>
 			</Head>
 			<header className="header">
-				<Typography
+				<Heading
 					as="span"
-					variant="extraLarge"
-					weight="bold"
+					level="2"
 					className="header__name"
 				>
 					ENS Fairy
-				</Typography>
+				</Heading>
 				<ConnectButton showBalance={false} />
 			</header>
 			<div className="container">
