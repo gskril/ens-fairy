@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ensdomains/thorin": "^0.6.2",
+    "@ensdomains/thorin": "^0.6.4",
     "@rainbow-me/rainbowkit": "^0.4.1",
     "ethers": "^5.6.9",
     "next": "12.2.0",

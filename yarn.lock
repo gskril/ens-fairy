@@ -226,10 +226,10 @@
   resolved "https://registry.yarnpkg.com/@emotion/unitless/-/unitless-0.7.5.tgz#77211291c1900a700b8a78cfafda3160d76949ed"
   integrity sha512-OWORNpfjMsSSUBVrRBVGECkhWcULOAJz9ZW8uK9qgxD+87M7jHRcvh/A96XXNhXTLmKcoYSQtBEX7lHMO7YRwg==
 
-"@ensdomains/thorin@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@ensdomains/thorin/-/thorin-0.6.2.tgz#4aaf44fdbcdc51c2c68eb98e2ef8d4ac57c4acab"
-  integrity sha512-wBlg1oXWs+fP9/owKqRo+NDboNthKTLl1T7K3J8IPwixqqrJBsLkyOvqK1FljnjnLhegZPiSD//dnTGPiMroDA==
+"@ensdomains/thorin@^0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@ensdomains/thorin/-/thorin-0.6.4.tgz#860aa35e8c1fb71656b1e9efaf99766914ab03b0"
+  integrity sha512-ojzDUi/+j9BZEZ7JwN38F8cz/xt6ZYiuAqwkN8tk9H4hSUAjUB9CvoFza6HTn7y9WJbcNSUVOW9EOm4JA9CdbQ==
   dependencies:
     clsx "^1.1.1"
     focus-visible "^5.2.0"
@@ -1538,10 +1538,15 @@ clsx@1.1.1:
   resolved "https://registry.yarnpkg.com/clsx/-/clsx-1.1.1.tgz#98b3134f9abbdf23b2663491ace13c5c03a73188"
   integrity sha512-6/bPho624p3S2pMyvP5kKBPXnI3ufHLObBFCfgx+LkeR5lg2XYy2hqZqUf45ypD8COn2bhgGJSUE+l5dhNBieA==
 
-clsx@^1.1.0, clsx@^1.1.1:
+clsx@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/clsx/-/clsx-1.2.0.tgz#b0e415ea7537dbac01b169c5cec1caeb11d86566"
   integrity sha512-EPRP7XJsM1y0iCU3Z7C7jFKdQboXSeHgEfzQUTlz7m5NP3hDrlz48aUsmNGp4pC+JOW9WA3vIRqlYuo/bl4Drw==
+
+clsx@^1.1.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/clsx/-/clsx-1.2.1.tgz#0ddc4a20a549b59c93a4116bb26f5294ca17dc12"
+  integrity sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==
 
 color-convert@^1.9.0:
   version "1.9.3"
