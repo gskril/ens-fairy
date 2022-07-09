@@ -24,6 +24,7 @@ import {
 } from 'wagmi'
 import Confetti from 'react-confetti'
 import useFetch from '../hooks/fetch'
+import Details from './tx-summary'
 
 export default function Registration({
 	commitCost,
@@ -44,7 +45,10 @@ export default function Registration({
 	const resolveOwner = useFetch(
 		open && `https://api.ensideas.com/ens/resolve/${owner}`
 	)
-	const resolvedOwner = resolveOwner?.data?.displayName
+	const resolvedOwner = {
+		name: resolveOwner?.data?.displayName,
+		avatar: resolveOwner?.data?.avatar,
+	}
 
 	// Contract read: make commitment
 	const commitment = useContractRead({
@@ -217,7 +221,7 @@ export default function Registration({
 							<>
 								<p>
 									You successfully registered {name}.eth and
-									sent it to {resolvedOwner}!
+									sent it to {resolvedOwner.name}!
 								</p>
 								<p>
 									Name resolution is already setup, meaning
@@ -234,6 +238,14 @@ export default function Registration({
 							</p>
 						)}
 					</Typography>
+					{!isRegistered && (
+						<Details
+							estimate={commitCost + registrationCost}
+							name={name}
+							owner={owner}
+							recipient={resolvedOwner}
+						/>
+					)}
 					<Typography size="base" weight="medium">
 						<ul className="steps">
 							<li className="step">
@@ -265,33 +277,22 @@ export default function Registration({
 										</svg>
 									)}
 								</Skeleton>
-								Commit - $
-								{!showCountdown
-									? // Show estimated cost, or real cost if the transaction has settled
-									  commitCost.toFixed(2)
-									: parseFloat(
-											ethers.utils.formatEther(
-												commit.data?.gasPrice
-											) * ethPrice
-									  ).toFixed(2)}
+								Commit
 							</li>
-							{!isRegistered && (
-								<li className="step">
-									<CountdownCircle
-										countdownAmount={60}
-										disabled={!showCountdown}
-										style={{
-											marginTop: '-0.35rem',
-											marginBottom: '-0.35rem',
-											transform:
-												'scale(0.75) translateX(-1rem)',
-											filter: showCountdown
-												? 'grayscale(0%)'
-												: 'grayscale(100%)',
-										}}
-									/>
-								</li>
-							)}
+							<li className="step">
+								<CountdownCircle
+									countdownAmount={60}
+									disabled={!showCountdown}
+									style={{
+										marginTop: '-0.35rem',
+										marginBottom: '-0.35rem',
+										transform: 'scale(0.8)',
+										filter: showCountdown
+											? 'grayscale(0%)'
+											: 'grayscale(100%)',
+									}}
+								/>
+							</li>
 							<li className="step">
 								<Skeleton
 									loading={!register.data}
@@ -336,22 +337,7 @@ export default function Registration({
 										</svg>
 									)}
 								</Skeleton>
-								Register - $
-								{!isRegistered
-									? registrationCost.toFixed(2)
-									: parseFloat(
-											(Number(
-												ethers.utils.formatEther(
-													register.data?.gasPrice
-												)
-											) +
-												Number(
-													ethers.utils.formatEther(
-														register.data?.value
-													)
-												)) *
-												ethPrice
-									  ).toFixed(2)}
+								Register
 							</li>
 						</ul>
 					</Typography>
@@ -361,12 +347,17 @@ export default function Registration({
 			<style jsx>{`
 				.steps {
 					display: flex;
-					flex-direction: column;
+					flex-direction: row;
+					justify-content: space-between;
+					margin: 0 auto;
+					max-width: 23rem;
 					gap: 0.75rem;
 				}
 
 				.step {
 					display: flex;
+					flex-direction: column;
+					align-items: center;
 					gap: 0.5rem;
 				}
 			`}</style>

@@ -174,9 +174,9 @@ export default function Home() {
 						/>
 						<Input
 							label="Duration"
-							placeholder="2"
+							placeholder="1"
 							type="number"
-							units="years"
+							units={durationToRegister > 1 ? 'years' : 'year'}
 							required
 							min={1}
 							max={10}
