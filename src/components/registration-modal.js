@@ -50,6 +50,10 @@ export default function Registration({
 		avatar: resolveOwner?.data?.avatar,
 	}
 
+	const twitterMessage = encodeURI(
+		`I just registered ${name}.eth for _________ on ensfairy.xyz!`
+	)
+
 	// Contract read: make commitment
 	const commitment = useContractRead({
 		...ensRegistrarConfig,
@@ -156,15 +160,29 @@ export default function Registration({
 				}
 				variant="actionable"
 				leading={
-					!commit.data && (
-						<Button
-							shadowless
-							variant="secondary"
-							onClick={() => setIsOpen(false)}
-						>
-							Cancel
-						</Button>
-					)
+					<>
+						{!commit.data && (
+							<Button
+								shadowless
+								variant="secondary"
+								onClick={() => setIsOpen(false)}
+							>
+								Cancel
+							</Button>
+						)}
+						{isRegistered && (
+							<Button
+								shadowless
+								variant="secondary"
+								as="a"
+								target="_blank"
+								rel="noreferrer"
+								href={`https://twitter.com/intent/tweet?text=${twitterMessage}`}
+							>
+								Share
+							</Button>
+						)}
+					</>
 				}
 				trailing={
 					isRegistered ? (
@@ -232,9 +250,9 @@ export default function Registration({
 						) : (
 							<p>
 								Registering an ENS name is a two step process.
-								In between the steps, there is a 1 minute
-								waiting period. This is to protect you from a
-								bad actor front-running your registration.
+								Between the steps there is a 1 minute waiting
+								period to protect your transaction from getting
+								front-run.
 							</p>
 						)}
 					</Typography>

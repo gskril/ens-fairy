@@ -78,6 +78,7 @@ export default function Details({
 					line-height: 1;
 					height: 36px;
 					background-image: ${theme.colors.gradients.blue};
+					box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.1);
 					border-radius: 18px;
 					overflow: hidden;
 				}

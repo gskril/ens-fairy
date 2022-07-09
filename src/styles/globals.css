@@ -1,6 +1,7 @@
 body {
   min-height: 100vh;
-  /* background-color: white; */
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 p:not(:last-of-type) {
