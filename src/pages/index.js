@@ -90,26 +90,28 @@ export default function Home() {
 							return toast.error(`Switch to a supported network`)
 						}
 
-						// Check if all fields are filled
+						// Check if the name fields are filled
 						if (
 							nameToRegister.length < 3 ||
-							ownerToRegister.length < 7 ||
-							durationToRegister < 1
+							ownerToRegister.length < 7
 						) {
-							return toast.error(
-								'Please fill out all fields correctly'
-							)
+							toast.error('Please fill out all fields correctly')
+							return
+						}
+
+						// Check that a duration is set
+						if (durationToRegister < 1) {
+							toast.error('Please set a duration')
+							return
 						}
 
 						if (nameToRegister.length < 5) {
-							return toast.error(
-								'We only support 5+ character names',
-								{
-									style: {
-										maxWidth: '100%',
-									},
-								}
-							)
+							toast.error('We only support 5+ character names', {
+								style: {
+									maxWidth: '100%',
+								},
+							})
+							return
 						}
 
 						// Validate name

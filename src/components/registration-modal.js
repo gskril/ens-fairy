@@ -220,7 +220,7 @@ export default function Registration({
 					) : (
 						// Show commit button
 						<Button shadowless onClick={() => commit.write()}>
-							Begin
+							Get Started
 						</Button>
 					)
 				}
@@ -238,8 +238,9 @@ export default function Registration({
 						{isRegistered ? (
 							<>
 								<p>
-									You successfully registered {name}.eth and
-									sent it to {resolvedOwner.name}!
+									You successfully registered{' '}
+									<strong>{name}.eth</strong> and sent it to{' '}
+									<strong>{resolvedOwner.name}</strong>!
 								</p>
 								<p>
 									Name resolution is already setup, meaning
