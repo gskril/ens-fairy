@@ -2,11 +2,11 @@ import Head from 'next/head'
 import { ethers } from 'ethers'
 import { useState } from 'react'
 import useFetch from '../hooks/fetch'
+import Header from '../components/header'
 import toast, { Toaster } from 'react-hot-toast'
 import Registration from '../components/registration-modal'
 import { Button, Heading, Input } from '@ensdomains/thorin'
 import { useAccount, useNetwork, useProvider } from 'wagmi'
-import ConnectButtonWrapper from '../components/connect-button'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
 
 export default function Home() {
@@ -44,7 +44,7 @@ export default function Home() {
 		<>
 			<Head>
 				<title>ENS Fairy</title>
-				<meta property="og:title" content="Ethereum Name Service" />
+				<meta property="og:title" content="ENS Fairy" />
 				<meta property="twitter:card" content="summary_large_image" />
 				<meta property="twitter:creator" content="@gregskril" />
 				<meta
@@ -60,12 +60,7 @@ export default function Home() {
 					content="https://ensfairy.com/sharing.png"
 				/>
 			</Head>
-			<header className="header">
-				<Heading as="span" level="2" className="header__name">
-					ENS Fairy
-				</Heading>
-				<ConnectButtonWrapper />
-			</header>
+			<Header />
 			<div className="container">
 				<Heading
 					as="h1"

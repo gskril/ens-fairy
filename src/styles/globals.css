@@ -16,6 +16,7 @@ p:not(:last-of-type) {
   width: 100%;
   padding: 3rem 4rem;
   display: flex;
+  z-index: 101;
   justify-content: space-between;
   align-items: center;
 }
