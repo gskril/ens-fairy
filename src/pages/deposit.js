@@ -160,12 +160,17 @@ export default function Depost() {
 			<Toaster position="bottom-center" />
 
 			<style jsx>{`
+				.button-wrapper {
+					margin-top: 1rem;
+				}
+
 				@media screen and (min-width: 27em) {
 					.button-wrapper {
 						min-width: 23rem;
 						max-width: 100%;
 						padding: 2rem;
 						transform: scale(1.25);
+						margin-top: 0;
 					}
 				}
 			`}</style>
