@@ -1,11 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  images: {
-    domains: [
-      'metadata.ens.domains'
-    ]
-  },
-  reactStrictMode: true,
-}
+const { withPlausibleProxy } = require('next-plausible')
 
-module.exports = nextConfig
+/** @type {import('next').NextConfig} */
+module.exports = withPlausibleProxy()({
+	images: {
+		domains: ['metadata.ens.domains'],
+	},
+	reactStrictMode: true,
+})

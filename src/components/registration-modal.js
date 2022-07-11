@@ -9,7 +9,6 @@ import {
 	Spinner,
 	Typography,
 } from '@ensdomains/thorin'
-import { ethers } from 'ethers'
 import {
 	ensRegistrarConfig,
 	ensResolver,
@@ -25,17 +24,18 @@ import {
 import Confetti from 'react-confetti'
 import useFetch from '../hooks/fetch'
 import Details from './tx-summary'
+import { usePlausible } from 'next-plausible'
 
 export default function Registration({
 	commitCost,
 	duration,
-	ethPrice,
 	name,
 	open,
 	owner,
 	registrationCost,
 	setIsOpen,
 }) {
+	const plausible = usePlausible()
 	const [secret, setSecret] = useState(
 		'0x' + crypto.randomBytes(32).toString('hex')
 	)
@@ -130,6 +130,14 @@ export default function Registration({
 			} else {
 				toast.success('Your name has been registered!')
 				setIsRegistered(true)
+
+				// Plausible Analytics
+				plausible('Name Registration', {
+					props: {
+						name: `${name}.eth`,
+						network: chain.name,
+					},
+				})
 			}
 		},
 	})

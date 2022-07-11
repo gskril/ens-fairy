@@ -6,6 +6,7 @@ import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { chain, configureChains, createClient, WagmiConfig } from 'wagmi'
 import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
+import PlausibleProvider from 'next-plausible'
 
 const { chains, provider } = configureChains(
 	[chain.mainnet, chain.rinkeby],
@@ -23,13 +24,21 @@ const wagmiClient = createClient({
 	provider,
 })
 
+const isProdEnv = process.env.NEXT_PUBLIC_VERCEL_ENV == 'production'
+
 const App = ({ Component, pageProps }) => {
 	return (
 		<ThemeProvider theme={lightTheme}>
 			<ThorinGlobalStyles />
 			<WagmiConfig client={wagmiClient}>
 				<RainbowKitProvider chains={chains}>
-					<Component {...pageProps} />
+					<PlausibleProvider
+						domain={isProdEnv ? 'ensfairy.xyz' : 'dev.ensfairy.xyz'}
+						trackLocalhost={!isProdEnv}
+						trackOutboundLinks
+					>
+						<Component {...pageProps} />
+					</PlausibleProvider>
 				</RainbowKitProvider>
 			</WagmiConfig>
 		</ThemeProvider>
