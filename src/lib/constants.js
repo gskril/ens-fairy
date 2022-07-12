@@ -4,7 +4,7 @@ export const ensBaseRegistrarAddr = '0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85'
 export const ensRegistrarAbi = require('./ens-registrar-abi.json')
 export const ensBaseRegistrarAbi = require('./ens-base-registrar-abi.json')
 
-export const ensFairyVault = '0xeEE50f610a3d485599A8eB718844EEBfa29E5966'
+export const ensFairyVault = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
 
 export const ensRegistrarConfig = {
 	addressOrName: ensRegistrarAddr,
