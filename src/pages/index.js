@@ -66,7 +66,7 @@ export default function Home() {
 				/>
 				<meta
 					property="og:image"
-					content="https://ensfairy.com/sharing.png"
+					content="https://ensfairy.xyz/sharing.png"
 				/>
 			</Head>
 			<Header />
