@@ -6,7 +6,13 @@ import useFetch from '../hooks/fetch'
 import Header from '../components/header'
 import toast, { Toaster } from 'react-hot-toast'
 import Registration from '../components/registration-modal'
-import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
+import {
+	Button,
+	Checkbox,
+	Heading,
+	Input,
+	Typography,
+} from '@ensdomains/thorin'
 import { useAccount, useNetwork, useProvider } from 'wagmi'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
 
@@ -15,6 +21,8 @@ export default function Home() {
 	const [nameToRegister, setNameToRegister] = useState('')
 	const [ownerToRegister, setOwnerToRegister] = useState('')
 	const [durationToRegister, setDurationToRegister] = useState('')
+	const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
+	const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
 
 	const provider = useProvider()
 	const { chain, chains } = useNetwork()
@@ -160,6 +168,7 @@ export default function Home() {
 						<Input
 							label="Recipient"
 							placeholder="0xA0Cf…251e"
+							value={ownerToRegisterText}
 							maxLength="42"
 							required
 							spellCheck="false"
@@ -168,7 +177,10 @@ export default function Home() {
 								width: '20rem',
 								backgroundColor: '#fff',
 							}}
-							onChange={(e) => setOwnerToRegister(e.target.value)}
+							onChange={(e) => {
+								setOwnerToRegister(e.target.value)
+								setOwnerToRegisterText(e.target.value)
+							}}
 						/>
 						<Input
 							label="Duration"
@@ -197,6 +209,32 @@ export default function Home() {
 					>
 						Register
 					</Button>
+					<div
+						style={{
+							margin: 'auto',
+						}}
+					>
+						<Checkbox
+							label="Send to The ENS Fairy Vault"
+							checked={ownerToRegisterText === 'ensfairy.xyz'}
+							onChange={() => {
+								const ensFairy = 'ensfairy.xyz'
+
+								if (ownerToRegister === ensFairy) {
+									setOwnerToRegister(recipientBeforeCheckbox)
+									setOwnerToRegisterText(
+										recipientBeforeCheckbox
+									)
+								} else {
+									setRecipientBeforeCheckbox(
+										ownerToRegisterText
+									)
+									setOwnerToRegister(ensFairy)
+									setOwnerToRegisterText(ensFairy)
+								}
+							}}
+						/>
+					</div>
 					<Registration
 						commitCost={commitCost}
 						duration={durationToRegister}
