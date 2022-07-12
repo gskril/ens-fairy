@@ -8,6 +8,10 @@ p:not(:last-of-type) {
   margin-bottom: 1rem;
 }
 
+p a {
+  color: rgb(82, 152, 255);
+}
+
 .header {
   position: absolute;
   top: 0;

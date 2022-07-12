@@ -4,7 +4,7 @@ import Header from '../components/header'
 import { useEffect, useState } from 'react'
 import { usePlausible } from 'next-plausible'
 import toast, { Toaster } from 'react-hot-toast'
-import { Button, Select } from '@ensdomains/thorin'
+import { Button, Dialog, Select, Typography } from '@ensdomains/thorin'
 import { useAccount, useContractWrite, useWaitForTransaction } from 'wagmi'
 import {
 	ensBaseRegistrarAddr,
@@ -81,6 +81,8 @@ export default function Depost() {
 		},
 	})
 
+	const [dialogOpen, setDialogOpen] = useState(false)
+
 	return (
 		<>
 			<Head>
@@ -152,25 +154,81 @@ export default function Depost() {
 							loading={processing}
 							disabled={processing}
 						>
-							Deposit name in the vault
+							Send to the vault
 						</Button>
 					</div>
 				</form>
+				<div className="what-is-this">
+					<Typography
+						as="p"
+						size="base"
+						weight="semiBold"
+						color="textTertiary"
+						onClick={() => setDialogOpen(true)}
+					>
+						What is this?
+					</Typography>
+				</div>
 			</div>
+			<Dialog
+				open={dialogOpen}
+				title="What is The Vault?"
+				className="modal"
+				onDismiss={() => setDialogOpen(false)}
+			>
+				<Typography size="base">
+					<p>
+						The vault is a multi-sig owned by{' '}
+						<a
+							href="https://twitter.com/ValidatorEth"
+							target="_blank"
+							rel="noreferrer"
+						>
+							validator.eth
+						</a>{' '}
+						and{' '}
+						<a
+							href="https://twitter.com/nicksdjohnson"
+							target="_blank"
+							rel="noreferrer"
+						>
+							nick.eth
+						</a>
+						.
+					</p>
+					<p>
+						It is meant to protect ENS names for brands and public
+						figures that community members were nice enough to
+						reserve, and are willing to hand over to the rightful
+						owner free of charge.
+					</p>
+					<p>
+						When the intended person/brand is ready for their name,
+						the multi-sig will transfer it to them free of charge.
+					</p>
+				</Typography>
+			</Dialog>
+
 			<Toaster position="bottom-center" />
 
 			<style jsx>{`
-				.button-wrapper {
-					margin-top: 1rem;
+				form {
+					width: 24rem;
+					max-width: 100%;
 				}
 
-				@media screen and (min-width: 27em) {
+				.button-wrapper {
+					margin: 1rem 0;
+				}
+
+				.what-is-this:hover {
+					cursor: pointer;
+				}
+
+				@media screen and (min-width: 29em) {
 					.button-wrapper {
-						min-width: 23rem;
-						max-width: 100%;
-						padding: 2rem;
 						transform: scale(1.25);
-						margin-top: 0;
+						margin: 2rem 2rem;
 					}
 				}
 			`}</style>
