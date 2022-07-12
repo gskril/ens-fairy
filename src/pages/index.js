@@ -218,7 +218,7 @@ export default function Home() {
 							weight="semiBold"
 							color="textTertiary"
 						>
-							Deposit brand names to the vault
+							Send existing names to The ENS Fairy Vault
 						</Typography>
 					</a>
 				</Link>

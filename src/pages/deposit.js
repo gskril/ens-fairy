@@ -92,11 +92,11 @@ export default function Depost() {
 				<meta property="twitter:creator" content="@gregskril" />
 				<meta
 					name="description"
-					content="Deposit names into the ENS Fairy Vault"
+					content="Deposit names into The ENS Fairy Vault"
 				/>
 				<meta
 					property="og:description"
-					content="Deposit names into the ENS Fairy Vault"
+					content="Deposit names into The ENS Fairy Vault"
 				/>
 				<meta
 					property="og:image"
@@ -178,7 +178,19 @@ export default function Depost() {
 			>
 				<Typography size="base">
 					<p>
-						The vault is a multi-sig owned by{' '}
+						The ENS Fairy Vault is a wallet that can hold ENS names
+						for individuals, organizations, and companies until they
+						create an Ethereum wallet to self-custody their ENS
+						name.
+					</p>
+					<p>
+						You can register a name for someone else and deposit it
+						to the ENS Fairy Vault, where it will be held for
+						safekeeping until the recipient claims the name.
+					</p>
+					<p>
+						The ENS Fairy Vault is a multisig wallet. The keyholders
+						of the wallet are{' '}
 						<a
 							href="https://twitter.com/ValidatorEth"
 							target="_blank"
@@ -186,25 +198,15 @@ export default function Depost() {
 						>
 							validator.eth
 						</a>{' '}
-						and{' '}
+						(support lead for ENS) and{' '}
 						<a
 							href="https://twitter.com/nicksdjohnson"
 							target="_blank"
 							rel="noreferrer"
 						>
 							nick.eth
-						</a>
-						.
-					</p>
-					<p>
-						It is meant to protect ENS names for brands and public
-						figures that community members were nice enough to
-						reserve, and are willing to hand over to the rightful
-						owner free of charge.
-					</p>
-					<p>
-						When the intended person/brand is ready for their name,
-						the multi-sig will transfer it to them free of charge.
+						</a>{' '}
+						(founder and lead developer of ENS).
 					</p>
 				</Typography>
 			</Dialog>
