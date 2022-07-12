@@ -1,11 +1,12 @@
 import Head from 'next/head'
+import Link from 'next/link'
 import { ethers } from 'ethers'
 import { useState } from 'react'
 import useFetch from '../hooks/fetch'
 import Header from '../components/header'
 import toast, { Toaster } from 'react-hot-toast'
 import Registration from '../components/registration-modal'
-import { Button, Heading, Input } from '@ensdomains/thorin'
+import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
 import { useAccount, useNetwork, useProvider } from 'wagmi'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
 
@@ -207,6 +208,22 @@ export default function Home() {
 					/>
 				</form>
 			</div>
+
+			<div className="footer">
+				<Link href="/deposit">
+					<a>
+						<Typography
+							as="p"
+							size="base"
+							weight="semiBold"
+							color="textTertiary"
+						>
+							Deposit brand names to the vault
+						</Typography>
+					</a>
+				</Link>
+			</div>
+
 			<Toaster position="bottom-center" />
 		</>
 	)

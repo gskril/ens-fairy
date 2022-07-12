@@ -1,7 +1,6 @@
 body {
   min-height: 100vh;
   max-width: 100vw;
-  overflow: hidden;
 }
 
 p:not(:last-of-type) {
@@ -61,6 +60,18 @@ p a {
   gap: 1rem;
 }
 
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  padding: 2rem 4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 @media screen and (max-width: 44em) {
   .col {
     flex-direction: column;
@@ -101,6 +112,11 @@ p a {
   .header__name {
     display: none;
   }
+
+  .footer {
+    position: static;
+    padding: 2rem;
+  }
 }
 
 @media screen and (max-height: 48em) and (max-width: 44em) {
@@ -111,5 +127,9 @@ p a {
 
   .container {
     min-height: unset;
+  }
+
+  .footer {
+    position: static;
   }
 }

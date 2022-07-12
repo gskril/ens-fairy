@@ -92,11 +92,11 @@ export default function Depost() {
 				<meta property="twitter:creator" content="@gregskril" />
 				<meta
 					name="description"
-					content="Deposit your name into the ENS Fairy Vault"
+					content="Deposit names into the ENS Fairy Vault"
 				/>
 				<meta
 					property="og:description"
-					content="Deposit your name into the ENS Fairy Vault"
+					content="Deposit names into the ENS Fairy Vault"
 				/>
 				<meta
 					property="og:image"
