@@ -18,13 +18,13 @@ export default function Details({
 				<div className="detail">
 					<span className="key">Recipient</span>
 					<div className="value">
-						{recipient.name
-							? recipient.name
+						{recipient?.name
+							? recipient?.name
 							: owner.slice(0, 5) + '…' + owner.slice(-4)}
 						{recipient?.avatar && (
 							<div className="image-wrapper">
 								<Image
-									src={`http://metadata.ens.domains/mainnet/avatar/${recipient.name}`}
+									src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`}
 									alt=""
 									width={36}
 									height={36}

@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
 	Button,
 	CountdownCircle,
@@ -19,10 +19,11 @@ import {
 	useContractRead,
 	useContractWrite,
 	useNetwork,
+	useProvider,
+	useEnsAvatar,
 	useWaitForTransaction,
 } from 'wagmi'
 import Confetti from 'react-confetti'
-import useFetch from '../hooks/fetch'
 import Details from './tx-summary'
 import { usePlausible } from 'next-plausible'
 
@@ -42,13 +43,27 @@ export default function Registration({
 	const durationInSeconds = duration * 365 * 24 * 60 * 60
 	const { chain } = useNetwork()
 
-	const resolveOwner = useFetch(
-		open && `https://api.ensideas.com/ens/resolve/${owner}`
-	)
-	const resolvedOwner = {
-		name: resolveOwner?.data?.displayName,
-		avatar: resolveOwner?.data?.avatar,
-	}
+	const provider = useProvider()
+	const [resolvedOwner, setResolvedOwner] = useState()
+
+	const ensAvatar = useEnsAvatar({
+		addressOrName: open && owner,
+	})
+
+	useEffect(() => {
+		async function resolveOwner() {
+			const name = await provider.lookupAddress(owner)
+
+			setResolvedOwner({
+				name: name,
+				avatar: ensAvatar.data,
+			})
+		}
+
+		if (open) {
+			resolveOwner()
+		}
+	}, [ensAvatar, open, owner, provider])
 
 	const twitterMessage = encodeURI(
 		`I just registered ${name}.eth for _________ on ensfairy.xyz!`
@@ -248,7 +263,7 @@ export default function Registration({
 								<p>
 									You successfully registered{' '}
 									<strong>{name}.eth</strong> and sent it to{' '}
-									<strong>{resolvedOwner.name}</strong>!
+									<strong>{resolvedOwner?.name}</strong>!
 								</p>
 								<p>
 									Name resolution is already setup, meaning
