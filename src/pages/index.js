@@ -5,6 +5,7 @@ import { useState } from 'react'
 import useFetch from '../hooks/fetch'
 import Header from '../components/header'
 import toast, { Toaster } from 'react-hot-toast'
+import { normalize } from '@ensdomains/eth-ens-namehash'
 import Registration from '../components/registration-modal'
 import {
 	Button,
@@ -115,6 +116,17 @@ export default function Home() {
 									maxWidth: '100%',
 								},
 							})
+							return
+						}
+
+						// Normalize name
+						try {
+							const normalizedName = normalize(nameToRegister)
+							setNameToRegister(normalizedName)
+						} catch (e) {
+							toast.error(
+								`${nameToRegister}.eth is not a valid name`
+							)
 							return
 						}
 

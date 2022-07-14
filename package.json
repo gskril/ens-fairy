@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ensdomains/eth-ens-namehash": "^2.0.15",
     "@ensdomains/thorin": "^0.6.4",
     "@rainbow-me/rainbowkit": "^0.4.1",
     "ethers": "^5.6.9",

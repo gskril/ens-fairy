@@ -226,6 +226,11 @@
   resolved "https://registry.yarnpkg.com/@emotion/unitless/-/unitless-0.7.5.tgz#77211291c1900a700b8a78cfafda3160d76949ed"
   integrity sha512-OWORNpfjMsSSUBVrRBVGECkhWcULOAJz9ZW8uK9qgxD+87M7jHRcvh/A96XXNhXTLmKcoYSQtBEX7lHMO7YRwg==
 
+"@ensdomains/eth-ens-namehash@^2.0.15":
+  version "2.0.15"
+  resolved "https://registry.yarnpkg.com/@ensdomains/eth-ens-namehash/-/eth-ens-namehash-2.0.15.tgz#5e5f2f24ba802aff8bc19edd822c9a11200cdf4a"
+  integrity sha512-JRDFP6+Hczb1E0/HhIg0PONgBYasfGfDheujmfxaZaAv/NAH4jE6Kf48WbqfRZdxt4IZI3jl3Ri7sZ1nP09lgw==
+
 "@ensdomains/thorin@^0.6.4":
   version "0.6.4"
   resolved "https://registry.yarnpkg.com/@ensdomains/thorin/-/thorin-0.6.4.tgz#860aa35e8c1fb71656b1e9efaf99766914ab03b0"
