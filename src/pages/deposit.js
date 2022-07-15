@@ -24,7 +24,7 @@ export default function Depost() {
 	useEffect(() => {
 		const fetchNfts = async () => {
 			const opensea = await fetch(`
-        https://api.opensea.io/api/v1/assets?owner=${connectedAddress}&collection=ens&limit=20
+        https://api.opensea.io/api/v1/assets?owner=${connectedAddress}&collection=ens&limit=50
       `)
 			const nfts = await opensea.json()
 			setNfts(
