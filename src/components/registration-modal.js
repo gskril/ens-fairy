@@ -251,6 +251,15 @@ export default function Registration({
 					if (isRegistered) {
 						// Refresh the page on dialog exit after a registration to fully reset state
 						window.location.reload()
+					} else if (commit.data) {
+						return toast.error(
+							"You can't close the dialog during registration",
+							{
+								style: {
+									maxWidth: '100%',
+								},
+							}
+						)
 					} else {
 						setIsOpen(false)
 					}
