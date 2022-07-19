@@ -55,7 +55,7 @@ export default function Registration({
 			const name = await provider.lookupAddress(owner)
 
 			setResolvedOwner({
-				name: name,
+				name: name || owner.slice(0, 5) + '…' + owner.slice(-4),
 				avatar: ensAvatar.data,
 			})
 		}
@@ -127,7 +127,7 @@ export default function Registration({
 		],
 		overrides: {
 			value: price.data,
-			gasLimit: '280000',
+			gasLimit: '290000',
 		},
 		onError: (err) => {
 			toast.error(err.message)

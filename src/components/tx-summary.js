@@ -18,9 +18,7 @@ export default function Details({
 				<div className="detail">
 					<span className="key">Recipient</span>
 					<div className="value">
-						{recipient?.name
-							? recipient?.name
-							: owner.slice(0, 5) + '…' + owner.slice(-4)}
+						{recipient?.name}
 						{recipient?.avatar && (
 							<div className="image-wrapper">
 								<Image
