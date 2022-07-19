@@ -34,12 +34,23 @@ export default function Home() {
 		provider
 	)
 
+	const handlePrice = (length) => {
+		if (length === 3) {
+			setNamePrice(640)
+		} else if (length === 4) {
+			setNamePrice(160)
+		} else {
+			setNamePrice(5)
+		}
+	}
+
 	// Live Ethereum stats
 	const gasApi = useFetch('https://gas.best/stats')
 	const gasPrice = gasApi.data?.pending?.fee
 	const ethPrice = gasApi.data?.ethPrice
 
 	// Cost estimates
+	const [namePrice, setNamePrice] = useState(5)
 	const commitGasAmount = 46267
 	const registrationGasAmount = 280000
 	const commitCost = parseFloat(
@@ -47,7 +58,7 @@ export default function Home() {
 	)
 	const registrationCost = parseFloat(
 		ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
-			(durationToRegister || 1) * 5
+			(durationToRegister || 1) * namePrice
 	)
 
 	return (
@@ -84,6 +95,7 @@ export default function Home() {
 					className="form"
 					onSubmit={async (e) => {
 						e.preventDefault()
+						handlePrice(nameToRegister.length)
 
 						// Check wallet connection
 						if (!isConnected) {
@@ -95,27 +107,10 @@ export default function Home() {
 							return toast.error(`Switch to a supported network`)
 						}
 
-						// Check if the name fields are filled
-						if (
-							nameToRegister.length < 3 ||
-							ownerToRegister.length < 7
-						) {
-							toast.error('Please fill out all fields correctly')
-							return
-						}
-
-						// Check that a duration is set
-						if (durationToRegister < 1) {
-							toast.error('Please set a duration')
-							return
-						}
-
-						if (nameToRegister.length < 5) {
-							toast.error('We only support 5+ character names', {
-								style: {
-									maxWidth: '100%',
-								},
-							})
+						if (nameToRegister.length < 3) {
+							toast.error(
+								'.eth names must be at least 3 characters'
+							)
 							return
 						}
 
@@ -141,6 +136,12 @@ export default function Home() {
 						}
 
 						// Validate owner
+						if (!ownerToRegister) {
+							return toast.error(
+								'Please enter a recipient address'
+							)
+						}
+
 						let isValidOwner = false
 						if (ethers.utils.isAddress(ownerToRegister)) {
 							isValidOwner = true
@@ -162,6 +163,12 @@ export default function Home() {
 							)
 						}
 
+						// Check that a duration is set
+						if (durationToRegister < 1) {
+							toast.error('Please set a duration')
+							return
+						}
+
 						setDialogOpen(true)
 					}}
 				>
@@ -175,6 +182,7 @@ export default function Home() {
 							autoCapitalize="none"
 							suffix=".eth"
 							parentStyles={{ backgroundColor: '#fff' }}
+							onBlur={(e) => handlePrice(e.target.value.length)}
 							onChange={(e) => setNameToRegister(e.target.value)}
 						/>
 						<Input
