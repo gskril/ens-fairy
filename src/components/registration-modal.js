@@ -126,7 +126,7 @@ export default function Registration({
 			owner, // addr
 		],
 		overrides: {
-			value: price.data,
+			value: Number(price.data * 1.01).toString(),
 			gasLimit: '290000',
 		},
 		onError: (err) => {
