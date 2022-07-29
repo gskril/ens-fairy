@@ -7,8 +7,8 @@ export const ensBaseRegistrarAbi = require('./ens-base-registrar-abi.json')
 export const ensFairyVault = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
 
 export const ensRegistrarConfig = {
-	addressOrName: ensRegistrarAddr,
-	contractInterface: ensRegistrarAbi,
+  addressOrName: ensRegistrarAddr,
+  contractInterface: ensRegistrarAbi,
 }
 
 export const ensResolver = '0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41'

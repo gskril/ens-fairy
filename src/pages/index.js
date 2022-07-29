@@ -8,281 +8,258 @@ import toast, { Toaster } from 'react-hot-toast'
 import { normalize } from '@ensdomains/eth-ens-namehash'
 import Registration from '../components/registration-modal'
 import {
-	Button,
-	Checkbox,
-	Heading,
-	Input,
-	Typography,
+  Button,
+  Checkbox,
+  Heading,
+  Input,
+  Typography,
 } from '@ensdomains/thorin'
 import { useAccount, useNetwork, useProvider } from 'wagmi'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
 
 export default function Home() {
-	const [dialogOpen, setDialogOpen] = useState(false)
-	const [nameToRegister, setNameToRegister] = useState('')
-	const [ownerToRegister, setOwnerToRegister] = useState('')
-	const [durationToRegister, setDurationToRegister] = useState('')
-	const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
-	const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [nameToRegister, setNameToRegister] = useState('')
+  const [ownerToRegister, setOwnerToRegister] = useState('')
+  const [durationToRegister, setDurationToRegister] = useState('')
+  const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
+  const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
 
-	const provider = useProvider()
-	const { chain, chains } = useNetwork()
-	const { address: isConnected } = useAccount()
-	const ethRegistrar = new ethers.Contract(
-		ensRegistrarAddr,
-		ensRegistrarAbi,
-		provider
-	)
+  const provider = useProvider()
+  const { chain, chains } = useNetwork()
+  const { address: isConnected } = useAccount()
+  const ethRegistrar = new ethers.Contract(
+    ensRegistrarAddr,
+    ensRegistrarAbi,
+    provider
+  )
 
-	const handlePrice = (length) => {
-		if (length === 3) {
-			setNamePrice(640)
-		} else if (length === 4) {
-			setNamePrice(160)
-		} else {
-			setNamePrice(5)
-		}
-	}
+  const handlePrice = (length) => {
+    if (length === 3) {
+      setNamePrice(640)
+    } else if (length === 4) {
+      setNamePrice(160)
+    } else {
+      setNamePrice(5)
+    }
+  }
 
-	// Live Ethereum stats
-	const gasApi = useFetch('https://gas.best/stats')
-	const gasPrice = gasApi.data?.pending?.fee
-	const ethPrice = gasApi.data?.ethPrice
+  // Live Ethereum stats
+  const gasApi = useFetch('https://gas.best/stats')
+  const gasPrice = gasApi.data?.pending?.fee
+  const ethPrice = gasApi.data?.ethPrice
 
-	// Cost estimates
-	const [namePrice, setNamePrice] = useState(5)
-	const commitGasAmount = 46267
-	const registrationGasAmount = 280000
-	const commitCost = parseFloat(
-		ethPrice * gasPrice * commitGasAmount * 0.000000001
-	)
-	const registrationCost = parseFloat(
-		ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
-			(durationToRegister || 1) * namePrice
-	)
+  // Cost estimates
+  const [namePrice, setNamePrice] = useState(5)
+  const commitGasAmount = 46267
+  const registrationGasAmount = 280000
+  const commitCost = parseFloat(
+    ethPrice * gasPrice * commitGasAmount * 0.000000001
+  )
+  const registrationCost = parseFloat(
+    ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
+      (durationToRegister || 1) * namePrice
+  )
 
-	return (
-		<>
-			<Head>
-				<title>ENS Fairy</title>
-				<meta property="og:title" content="ENS Fairy" />
-				<meta property="twitter:card" content="summary_large_image" />
-				<meta property="twitter:creator" content="@gregskril" />
-				<meta
-					name="description"
-					content="Register an ENS name directly to another address"
-				/>
-				<meta
-					property="og:description"
-					content="Register an ENS name directly to another address"
-				/>
-				<meta
-					property="og:image"
-					content="https://ensfairy.xyz/sharing.png"
-				/>
-			</Head>
-			<Header />
-			<div className="container">
-				<Heading
-					as="h1"
-					level="1"
-					align="center"
-					style={{ marginBottom: '2rem', lineHeight: '1' }}
-				>
-					Gift an ENS name
-				</Heading>
-				<form
-					className="form"
-					onSubmit={async (e) => {
-						e.preventDefault()
-						handlePrice(nameToRegister.length)
+  return (
+    <>
+      <Head>
+        <title>ENS Fairy</title>
+        <meta property="og:title" content="ENS Fairy" />
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:creator" content="@gregskril" />
+        <meta
+          name="description"
+          content="Register an ENS name directly to another address"
+        />
+        <meta
+          property="og:description"
+          content="Register an ENS name directly to another address"
+        />
+        <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
+      </Head>
+      <Header />
+      <div className="container">
+        <Heading
+          as="h1"
+          level="1"
+          align="center"
+          style={{ marginBottom: '2rem', lineHeight: '1' }}
+        >
+          Gift an ENS name
+        </Heading>
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            handlePrice(nameToRegister.length)
 
-						// Check wallet connection
-						if (!isConnected) {
-							return toast.error('Connect your wallet')
-						}
+            // Check wallet connection
+            if (!isConnected) {
+              return toast.error('Connect your wallet')
+            }
 
-						// Check the connected chain
-						if (!chains.some((c) => c.id === chain.id)) {
-							return toast.error(`Switch to a supported network`)
-						}
+            // Check the connected chain
+            if (!chains.some((c) => c.id === chain.id)) {
+              return toast.error('Switch to a supported network')
+            }
 
-						if (nameToRegister.length < 3) {
-							toast.error(
-								'.eth names must be at least 3 characters'
-							)
-							return
-						}
+            if (nameToRegister.length < 3) {
+              toast.error('.eth names must be at least 3 characters')
+              return
+            }
 
-						// Normalize name
-						try {
-							const normalizedName = normalize(nameToRegister)
-							setNameToRegister(normalizedName)
-						} catch (e) {
-							toast.error(
-								`${nameToRegister}.eth is not a valid name`
-							)
-							return
-						}
+            // Normalize name
+            try {
+              const normalizedName = normalize(nameToRegister)
+              setNameToRegister(normalizedName)
+            } catch (e) {
+              toast.error(`${nameToRegister}.eth is not a valid name`)
+              return
+            }
 
-						// Validate name
-						const isNameAvailable = await ethRegistrar.available(
-							nameToRegister.toLowerCase()
-						)
-						if (!isNameAvailable) {
-							return toast.error(
-								`${nameToRegister}.eth is not available`
-							)
-						}
+            // Validate name
+            const isNameAvailable = await ethRegistrar.available(
+              nameToRegister.toLowerCase()
+            )
+            if (!isNameAvailable) {
+              return toast.error(`${nameToRegister}.eth is not available`)
+            }
 
-						// Validate owner
-						if (!ownerToRegister) {
-							return toast.error(
-								'Please enter a recipient address'
-							)
-						}
+            // Validate owner
+            if (!ownerToRegister) {
+              return toast.error('Please enter a recipient address')
+            }
 
-						let isValidOwner = false
-						if (ethers.utils.isAddress(ownerToRegister)) {
-							isValidOwner = true
-						} else {
-							try {
-								const resolvedName = await provider.resolveName(
-									ownerToRegister
-								)
-								if (resolvedName) {
-									isValidOwner = true
-									setOwnerToRegister(resolvedName)
-								}
-							} catch {}
-						}
+            let isValidOwner = false
+            if (ethers.utils.isAddress(ownerToRegister)) {
+              isValidOwner = true
+            } else {
+              try {
+                const resolvedName = await provider.resolveName(ownerToRegister)
+                if (resolvedName) {
+                  isValidOwner = true
+                  setOwnerToRegister(resolvedName)
+                }
+              } catch {}
+            }
 
-						if (!isValidOwner) {
-							return toast.error(
-								`${ownerToRegister} is not a valid address`
-							)
-						}
+            if (!isValidOwner) {
+              return toast.error(`${ownerToRegister} is not a valid address`)
+            }
 
-						// Check that a duration is set
-						if (durationToRegister < 1) {
-							toast.error('Please set a duration')
-							return
-						}
+            // Check that a duration is set
+            if (durationToRegister < 1) {
+              toast.error('Please set a duration')
+              return
+            }
 
-						setDialogOpen(true)
-					}}
-				>
-					<div className="col">
-						<Input
-							label="Name"
-							placeholder="gregskril"
-							maxLength="42"
-							required
-							spellCheck="false"
-							autoCapitalize="none"
-							suffix=".eth"
-							parentStyles={{ backgroundColor: '#fff' }}
-							onBlur={(e) => handlePrice(e.target.value.length)}
-							onChange={(e) => setNameToRegister(e.target.value)}
-						/>
-						<Input
-							label="Recipient"
-							placeholder="0xA0Cf…251e"
-							value={ownerToRegisterText}
-							maxLength="42"
-							required
-							spellCheck="false"
-							autoCapitalize="none"
-							parentStyles={{
-								width: '20rem',
-								backgroundColor: '#fff',
-							}}
-							onChange={(e) => {
-								setOwnerToRegister(e.target.value)
-								setOwnerToRegisterText(e.target.value)
-							}}
-						/>
-						<Input
-							label="Duration"
-							placeholder="1"
-							type="number"
-							units={durationToRegister > 1 ? 'years' : 'year'}
-							required
-							min={1}
-							max={10}
-							parentStyles={{ backgroundColor: '#fff' }}
-							onChange={(e) =>
-								setDurationToRegister(e.target.value)
-							}
-						/>
-					</div>
-					<Button
-						type="submit"
-						variant="action"
-						suffix={
-							// Total cost of registration
-							!gasApi.isLoading &&
-							`($${parseFloat(
-								commitCost + registrationCost
-							).toFixed(2)})`
-						}
-					>
-						Register
-					</Button>
-					<div
-						style={{
-							margin: 'auto',
-						}}
-					>
-						<Checkbox
-							label="Send to The ENS Fairy Vault"
-							checked={ownerToRegisterText === 'ensfairy.xyz'}
-							onChange={() => {
-								const ensFairy = 'ensfairy.xyz'
+            setDialogOpen(true)
+          }}
+        >
+          <div className="col">
+            <Input
+              label="Name"
+              placeholder="gregskril"
+              maxLength="42"
+              required
+              spellCheck="false"
+              autoCapitalize="none"
+              suffix=".eth"
+              parentStyles={{ backgroundColor: '#fff' }}
+              onBlur={(e) => handlePrice(e.target.value.length)}
+              onChange={(e) => setNameToRegister(e.target.value)}
+            />
+            <Input
+              label="Recipient"
+              placeholder="0xA0Cf…251e"
+              value={ownerToRegisterText}
+              maxLength="42"
+              required
+              spellCheck="false"
+              autoCapitalize="none"
+              parentStyles={{
+                width: '20rem',
+                backgroundColor: '#fff',
+              }}
+              onChange={(e) => {
+                setOwnerToRegister(e.target.value)
+                setOwnerToRegisterText(e.target.value)
+              }}
+            />
+            <Input
+              label="Duration"
+              placeholder="1"
+              type="number"
+              units={durationToRegister > 1 ? 'years' : 'year'}
+              required
+              min={1}
+              max={10}
+              parentStyles={{ backgroundColor: '#fff' }}
+              onChange={(e) => setDurationToRegister(e.target.value)}
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="action"
+            suffix={
+              // Total cost of registration
+              !gasApi.isLoading &&
+              `($${parseFloat(commitCost + registrationCost).toFixed(2)})`
+            }
+          >
+            Register
+          </Button>
+          <div
+            style={{
+              margin: 'auto',
+            }}
+          >
+            <Checkbox
+              label="Send to The ENS Fairy Vault"
+              checked={ownerToRegisterText === 'ensfairy.xyz'}
+              onChange={() => {
+                const ensFairy = 'ensfairy.xyz'
 
-								if (ownerToRegister === ensFairy) {
-									setOwnerToRegister(recipientBeforeCheckbox)
-									setOwnerToRegisterText(
-										recipientBeforeCheckbox
-									)
-								} else {
-									setRecipientBeforeCheckbox(
-										ownerToRegisterText
-									)
-									setOwnerToRegister(ensFairy)
-									setOwnerToRegisterText(ensFairy)
-								}
-							}}
-						/>
-					</div>
-					<Registration
-						commitCost={commitCost}
-						duration={durationToRegister}
-						name={nameToRegister}
-						open={dialogOpen}
-						owner={ownerToRegister}
-						registrationCost={registrationCost}
-						setIsOpen={setDialogOpen}
-					/>
-				</form>
-			</div>
+                if (ownerToRegister === ensFairy) {
+                  setOwnerToRegister(recipientBeforeCheckbox)
+                  setOwnerToRegisterText(recipientBeforeCheckbox)
+                } else {
+                  setRecipientBeforeCheckbox(ownerToRegisterText)
+                  setOwnerToRegister(ensFairy)
+                  setOwnerToRegisterText(ensFairy)
+                }
+              }}
+            />
+          </div>
+          <Registration
+            commitCost={commitCost}
+            duration={durationToRegister}
+            name={nameToRegister}
+            open={dialogOpen}
+            owner={ownerToRegister}
+            registrationCost={registrationCost}
+            setIsOpen={setDialogOpen}
+          />
+        </form>
+      </div>
 
-			<div className="footer">
-				<Link href="/deposit">
-					<a>
-						<Typography
-							as="p"
-							size="base"
-							weight="semiBold"
-							color="textTertiary"
-						>
-							Send existing names to The ENS Fairy Vault
-						</Typography>
-					</a>
-				</Link>
-			</div>
+      <div className="footer">
+        <Link href="/deposit">
+          <a>
+            <Typography
+              as="p"
+              size="base"
+              weight="semiBold"
+              color="textTertiary"
+            >
+              Send existing names to The ENS Fairy Vault
+            </Typography>
+          </a>
+        </Link>
+      </div>
 
-			<Toaster position="bottom-center" />
-		</>
-	)
+      <Toaster position="bottom-center" />
+    </>
+  )
 }
