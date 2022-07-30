@@ -24,6 +24,7 @@ export default function Home() {
   const [durationToRegister, setDurationToRegister] = useState('')
   const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
   const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
+  const durationInSeconds = (durationToRegister || 1) * 365 * 24 * 60 * 60
 
   const provider = useProvider()
   const { chain, chains } = useNetwork()
@@ -34,14 +35,17 @@ export default function Home() {
     provider
   )
 
-  const handlePrice = (length) => {
-    if (length === 3) {
-      setNamePrice(640)
-    } else if (length === 4) {
-      setNamePrice(160)
-    } else {
-      setNamePrice(5)
-    }
+  const handlePrice = async (name) => {
+    if (name === '') return setNamePrice(5)
+
+    const registrationFee = await ethRegistrar
+      .rentPrice(name, durationInSeconds)
+      .then((res) => ethers.utils.formatEther(res))
+      .catch(() => 5)
+
+    if (registrationFee == 0) return setNamePrice(5)
+
+    setNamePrice(parseInt(registrationFee * ethPrice))
   }
 
   // Live Ethereum stats
@@ -92,17 +96,6 @@ export default function Home() {
           className="form"
           onSubmit={async (e) => {
             e.preventDefault()
-            handlePrice(nameToRegister.length)
-
-            // Check wallet connection
-            if (!isConnected) {
-              return toast.error('Connect your wallet')
-            }
-
-            // Check the connected chain
-            if (!chains.some((c) => c.id === chain.id)) {
-              return toast.error('Switch to a supported network')
-            }
 
             if (nameToRegister.length < 3) {
               toast.error('.eth names must be at least 3 characters')
@@ -115,8 +108,11 @@ export default function Home() {
               setNameToRegister(normalizedName)
             } catch (e) {
               toast.error(`${nameToRegister}.eth is not a valid name`)
+              setNamePrice(5)
               return
             }
+
+            handlePrice(nameToRegister)
 
             // Validate name
             const isNameAvailable = await ethRegistrar.available(
@@ -124,6 +120,16 @@ export default function Home() {
             )
             if (!isNameAvailable) {
               return toast.error(`${nameToRegister}.eth is not available`)
+            }
+
+            // Check wallet connection
+            if (!isConnected) {
+              return toast.error('Connect your wallet')
+            }
+
+            // Check the connected chain
+            if (!chains.some((c) => c.id === chain.id)) {
+              return toast.error('Switch to a supported network')
             }
 
             // Validate owner
@@ -141,7 +147,9 @@ export default function Home() {
                   isValidOwner = true
                   setOwnerToRegister(resolvedName)
                 }
-              } catch {}
+              } catch {
+                isValidOwner = false
+              }
             }
 
             if (!isValidOwner) {
@@ -167,7 +175,7 @@ export default function Home() {
               autoCapitalize="none"
               suffix=".eth"
               parentStyles={{ backgroundColor: '#fff' }}
-              onBlur={(e) => handlePrice(e.target.value.length)}
+              onBlur={(e) => handlePrice(e.target.value)}
               onChange={(e) => setNameToRegister(e.target.value)}
             />
             <Input
@@ -234,7 +242,7 @@ export default function Home() {
           </div>
           <Registration
             commitCost={commitCost}
-            duration={durationToRegister}
+            duration={durationInSeconds}
             name={nameToRegister}
             open={dialogOpen}
             owner={ownerToRegister}

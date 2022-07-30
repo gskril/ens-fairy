@@ -38,7 +38,6 @@ export default function Registration({
 }) {
   const plausible = usePlausible()
   const [secret] = useState('0x' + crypto.randomBytes(32).toString('hex'))
-  const durationInSeconds = duration * 365 * 24 * 60 * 60
   const { chain } = useNetwork()
 
   const provider = useProvider()
@@ -47,8 +46,6 @@ export default function Registration({
   const ensAvatar = useEnsAvatar({
     addressOrName: open && owner,
   })
-
-  console.log(secret)
 
   useEffect(() => {
     async function resolveOwner() {
@@ -109,7 +106,7 @@ export default function Registration({
   const price = useContractRead({
     ...ensRegistrarConfig,
     functionName: open && 'rentPrice',
-    args: [name, durationInSeconds],
+    args: [name, duration],
     watch: true,
   })
 
@@ -120,7 +117,7 @@ export default function Registration({
     args: [
       name, // name
       owner, // owner
-      durationInSeconds, // duration
+      duration, // duration
       secret, // secret
       chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
       owner, // addr
