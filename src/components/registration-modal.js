@@ -242,7 +242,7 @@ export default function Registration({
             window.location.reload()
           } else if (commit.data) {
             return toast.error(
-              "You can't close the dialog during registration",
+              'You can\'t close the dialog during registration',
               {
                 style: {
                   maxWidth: '100%',
