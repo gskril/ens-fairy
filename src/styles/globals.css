@@ -12,16 +12,19 @@ p a {
 }
 
 .header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   width: 100%;
   padding: 3rem 4rem;
   display: flex;
   z-index: 101;
   justify-content: space-between;
   align-items: center;
+}
+
+.header--absolute {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .header__name {
@@ -41,11 +44,18 @@ p a {
   max-width: 50rem;
   padding: 2rem;
   margin: 0 auto;
+  min-height: 100vh;
+}
+
+.container--flex {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+}
+
+.container--lg {
+  max-width: 60rem;
 }
 
 .col {

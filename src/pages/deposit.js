@@ -103,7 +103,7 @@ export default function Depost() {
           content="https://ensfairy.xyz/sharing.png"
         />
       </Head>
-      <Header />
+      <Header position="absolute" />
 
       {nameTransferred && (
         <Confetti
@@ -118,7 +118,7 @@ export default function Depost() {
         />
       )}
 
-      <div className="container">
+      <div className="container container--flex">
         <form
           onSubmit={(e) => {
             e.preventDefault()

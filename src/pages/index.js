@@ -82,8 +82,8 @@ export default function Home() {
         />
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
-      <Header />
-      <div className="container">
+      <Header position="absolute" />
+      <div className="container container--flex">
         <Heading
           as="h1"
           level="1"
