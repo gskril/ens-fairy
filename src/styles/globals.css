@@ -44,7 +44,6 @@ p a {
   max-width: 50rem;
   padding: 2rem;
   margin: 0 auto;
-  min-height: 100vh;
 }
 
 .container--flex {
@@ -52,6 +51,7 @@ p a {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  min-height: 100vh;
 }
 
 .container--lg {
