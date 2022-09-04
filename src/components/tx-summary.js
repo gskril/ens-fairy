@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { formatUsd } from '../lib/utils'
 import { lightTheme as theme } from '@ensdomains/thorin'
 
 export default function Details({ estimate, name, recipient, ...props }) {
@@ -27,7 +28,7 @@ export default function Details({ estimate, name, recipient, ...props }) {
         </div>
         <div className="detail">
           <span className="key">Estimated Cost</span>
-          <span className="value">${estimate.toFixed(2)}</span>
+          <span className="value">{formatUsd(estimate)}</span>
         </div>
       </div>
 

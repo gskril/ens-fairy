@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ethers } from 'ethers'
 import { useState } from 'react'
 import useFetch from '../hooks/fetch'
+import { formatUsd } from '../lib/utils'
 import Header from '../components/header'
 import toast, { Toaster } from 'react-hot-toast'
 import { normalize } from '@ensdomains/eth-ens-namehash'
@@ -212,8 +213,7 @@ export default function Home() {
             variant="action"
             suffix={
               // Total cost of registration
-              !gasApi.isLoading &&
-              `($${parseFloat(commitCost + registrationCost).toFixed(2)})`
+              !gasApi.isLoading && formatUsd(commitCost + registrationCost)
             }
           >
             Register
