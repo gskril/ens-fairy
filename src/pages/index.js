@@ -1,9 +1,9 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import { ethers } from 'ethers'
+import { useState } from 'react'
 import useFetch from '../hooks/fetch'
 import Header from '../components/header'
-import { useEffect, useState } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import { normalize } from '@ensdomains/eth-ens-namehash'
 import Registration from '../components/registration-modal'
@@ -21,10 +21,11 @@ export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [nameToRegister, setNameToRegister] = useState('')
   const [ownerToRegister, setOwnerToRegister] = useState('')
-  const [durationToRegister, setDurationToRegister] = useState('')
+  const [durationToRegister, setDurationToRegister] = useState(0)
   const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
   const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
-  const durationInSeconds = (durationToRegister || 1) * 365 * 24 * 60 * 60
+  const yearInSeconds = 365 * 24 * 60 * 60
+  const durationInSeconds = (durationToRegister || 1) * yearInSeconds
 
   const provider = useProvider()
   const { chain, chains } = useNetwork()
@@ -35,23 +36,15 @@ export default function Home() {
     provider
   )
 
-  useEffect(() => {
-    if (durationToRegister > 0) {
-      handlePrice(nameToRegister)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [durationToRegister])
-
   const handlePrice = async (name) => {
-    const years = durationToRegister || 1
-    if (name === '') return setNamePrice(5 * years)
+    if (name === '') return setNamePrice(5)
 
     const registrationFee = await ethRegistrar
-      .rentPrice(name, durationInSeconds)
+      .rentPrice(name, yearInSeconds)
       .then((res) => ethers.utils.formatEther(res) * ethPrice)
-      .catch(() => 5 * years)
+      .catch(() => 5)
 
-    if (registrationFee == 0) return setNamePrice(5 * years)
+    if (registrationFee == 0) return setNamePrice(5)
     setNamePrice(parseInt(registrationFee))
   }
 
@@ -68,7 +61,8 @@ export default function Home() {
     ethPrice * gasPrice * commitGasAmount * 0.000000001
   )
   const registrationCost = parseFloat(
-    ethPrice * gasPrice * registrationGasAmount * 0.000000001 + namePrice
+    ethPrice * gasPrice * registrationGasAmount * 0.000000001 +
+      namePrice * Number(durationToRegister || 1)
   )
 
   return (
@@ -210,7 +204,7 @@ export default function Home() {
               min={1}
               max={10}
               parentStyles={{ backgroundColor: '#fff' }}
-              onChange={(e) => setDurationToRegister(e.target.value)}
+              onChange={(e) => setDurationToRegister(Number(e.target.value))}
             />
           </div>
           <Button
