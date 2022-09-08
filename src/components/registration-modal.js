@@ -124,7 +124,7 @@ export default function Registration({
     ],
     overrides: {
       value: parseInt(price.data * 1.05).toString(),
-      gasLimit: '290000',
+      gasLimit: '300000',
     },
     onError: (err) => {
       toast.error(err.message)
