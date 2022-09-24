@@ -51,13 +51,13 @@ export default function Home() {
 
   // Live Ethereum stats
   const gasApi = useFetch('https://gas.best/stats')
-  const gasPrice = gasApi.data?.pending?.fee
+  const gasPrice = gasApi.data?.pending?.fee + 1
   const ethPrice = gasApi.data?.ethPrice
 
   // Cost estimates
   const [namePrice, setNamePrice] = useState(5)
-  const commitGasAmount = 46267
-  const registrationGasAmount = 280000
+  const commitGasAmount = 50000
+  const registrationGasAmount = 300000
   const commitCost = parseFloat(
     ethPrice * gasPrice * commitGasAmount * 0.000000001
   )
