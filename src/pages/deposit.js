@@ -4,6 +4,7 @@ import Header from '../components/header'
 import { useEffect, useState } from 'react'
 import { usePlausible } from 'next-plausible'
 import toast, { Toaster } from 'react-hot-toast'
+import useWindowSize from 'react-use/lib/useWindowSize'
 import { Button, Dialog, Select, Typography } from '@ensdomains/thorin'
 import { useAccount, useContractWrite, useWaitForTransaction } from 'wagmi'
 import {
@@ -15,6 +16,7 @@ import {
 export default function Depost() {
   const plausible = usePlausible()
   const { address: connectedAddress } = useAccount()
+  const { width: windowWidth, height: windowHeight } = useWindowSize()
 
   const [nfts, setNfts] = useState([])
   const [selectedNft, setSelectedNft] = useState()
@@ -98,22 +100,15 @@ export default function Depost() {
           property="og:description"
           content="Deposit names into The ENS Fairy Vault"
         />
-        <meta
-          property="og:image"
-          content="https://ensfairy.xyz/sharing.png"
-        />
+        <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
       <Header position="absolute" />
 
       {nameTransferred && (
         <Confetti
-          colors={[
-            '#44BCFO',
-            '#7298F8',
-            '#A099FF',
-            '#DE82FF',
-            '#7F6AFF',
-          ]}
+          width={windowWidth}
+          height={windowHeight}
+          colors={['#44BCFO', '#7298F8', '#A099FF', '#DE82FF', '#7F6AFF']}
           style={{ zIndex: '100' }}
         />
       )}
@@ -154,7 +149,7 @@ export default function Depost() {
               loading={processing}
               disabled={processing}
             >
-							Send to the vault
+              Send to the vault
             </Button>
           </div>
         </form>
@@ -166,7 +161,7 @@ export default function Depost() {
             color="textTertiary"
             onClick={() => setDialogOpen(true)}
           >
-						What is this?
+            What is this?
           </Typography>
         </div>
       </div>
@@ -178,35 +173,34 @@ export default function Depost() {
       >
         <Typography size="base">
           <p>
-						The ENS Fairy Vault is a wallet that can hold ENS names
-						for individuals, organizations, and companies until they
-						create an Ethereum wallet to self-custody their ENS
-						name.
+            The ENS Fairy Vault is a wallet that can hold ENS names for
+            individuals, organizations, and companies until they create an
+            Ethereum wallet to self-custody their ENS name.
           </p>
           <p>
-						You can register a name for someone else and deposit it
-						to the ENS Fairy Vault, where it will be held for
-						safekeeping until the recipient claims the name.
+            You can register a name for someone else and deposit it to the ENS
+            Fairy Vault, where it will be held for safekeeping until the
+            recipient claims the name.
           </p>
           <p>
-						The ENS Fairy Vault is a multisig wallet. The keyholders
-						of the wallet are{' '}
+            The ENS Fairy Vault is a multisig wallet. The keyholders of the
+            wallet are{' '}
             <a
               href="https://twitter.com/ValidatorEth"
               target="_blank"
               rel="noreferrer"
             >
-							validator.eth
+              validator.eth
             </a>{' '}
-						(support lead for ENS) and{' '}
+            (support lead for ENS) and{' '}
             <a
               href="https://twitter.com/nicksdjohnson"
               target="_blank"
               rel="noreferrer"
             >
-							nick.eth
+              nick.eth
             </a>{' '}
-						(founder and lead developer of ENS).
+            (founder and lead developer of ENS).
           </p>
         </Typography>
       </Dialog>
@@ -214,26 +208,26 @@ export default function Depost() {
       <Toaster position="bottom-center" />
 
       <style jsx>{`
-				form {
-					width: 24rem;
-					max-width: 100%;
-				}
+        form {
+          width: 24rem;
+          max-width: 100%;
+        }
 
-				.button-wrapper {
-					margin: 1rem 0;
-				}
+        .button-wrapper {
+          margin: 1rem 0;
+        }
 
-				.what-is-this:hover {
-					cursor: pointer;
-				}
+        .what-is-this:hover {
+          cursor: pointer;
+        }
 
-				@media screen and (min-width: 29em) {
-					.button-wrapper {
-						transform: scale(1.25);
-						margin: 2rem 2rem;
-					}
-				}
-			`}</style>
+        @media screen and (min-width: 29em) {
+          .button-wrapper {
+            transform: scale(1.25);
+            margin: 2rem 2rem;
+          }
+        }
+      `}</style>
     </>
   )
 }

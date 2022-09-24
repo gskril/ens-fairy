@@ -26,6 +26,7 @@ import {
 import Confetti from 'react-confetti'
 import Details from './tx-summary'
 import { usePlausible } from 'next-plausible'
+import useWindowSize from 'react-use/lib/useWindowSize'
 
 export default function Registration({
   commitCost,
@@ -37,6 +38,7 @@ export default function Registration({
   setIsOpen,
 }) {
   const plausible = usePlausible()
+  const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [secret] = useState('0x' + crypto.randomBytes(32).toString('hex'))
   const { chain } = useNetwork()
 
@@ -158,6 +160,8 @@ export default function Registration({
     <>
       {isRegistered && (
         <Confetti
+          width={windowWidth}
+          height={windowHeight}
           colors={['#44BCFO', '#7298F8', '#A099FF', '#DE82FF', '#7F6AFF']}
           style={{ zIndex: '1000' }}
         />

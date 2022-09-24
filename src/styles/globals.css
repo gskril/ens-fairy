@@ -93,15 +93,8 @@ p a {
 @media screen and (min-width: 640px) {
   .modal .modal {
     width: 35rem;
+    max-width: 100%;
     justify-content: center;
-  }
-}
-
-/* Thorin dialog on mobile */
-@media screen and (max-width: 639px) {
-  .modal .modal {
-    bottom: 50%;
-    transform: translateY(50%);
   }
 }
 
