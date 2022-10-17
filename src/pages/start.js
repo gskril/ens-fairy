@@ -1,7 +1,9 @@
+import 'keen-slider/keen-slider.min.css'
+import { Heading, Typography } from '@ensdomains/thorin'
+import { useKeenSlider } from 'keen-slider/react'
+import EnsProfile from '../components/ens-profile'
 import Head from 'next/head'
 import Image from 'next/image'
-import EnsProfile from '../components/ens-profile'
-import { Heading, Typography } from '@ensdomains/thorin'
 import styled from 'styled-components'
 
 import Header from '../components/header'
@@ -45,12 +47,73 @@ const Why = styled.div`
 
 const CarouselWrapper = styled.div`
   margin: 2rem auto 5rem;
+  max-width: 100%;
   line-height: 0;
   border-radius: 2rem;
   overflow: hidden;
 `
 
+const Slide = styled.div`
+  position: relative;
+
+  label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 1.25rem;
+    color: #fff;
+  }
+`
+
+const ensExamples = [
+  { name: 'uniswap.org', image: 'https://i.imgur.com/QxEMIa5.png' },
+  { name: 'sushi.com', image: 'https://i.imgur.com/f1hQUnq.png' },
+  { name: 'rainbowkit.com', image: 'https://i.imgur.com/tMUjese.png' },
+  { name: 'snapshot.org', image: 'https://i.imgur.com/lxTGpEp.png' },
+  // { name: 'ens.domains', image: 'https://i.imgur.com/8QqJAmv.png' },
+  // { name: 'ensgrants.xyz', image: 'https://i.imgur.com/PX8ILdv.png' },
+  // { name: 'nounsagora.com', image: 'https://i.imgur.com/gVk8PXE.png' },
+  // { name: 'nouns.wtf', image: 'https://i.imgur.com/ZExnaL1.png' },
+]
+
 export default function Start() {
+  // Slider config
+  const [sliderRef] = useKeenSlider(
+    {
+      loop: true,
+    },
+    [
+      (slider) => {
+        let timeout
+        let mouseOver = false
+        function clearNextTimeout() {
+          clearTimeout(timeout)
+        }
+        function nextTimeout() {
+          clearTimeout(timeout)
+          if (mouseOver) return
+          timeout = setTimeout(() => {
+            slider.next()
+          }, 4000)
+        }
+        slider.on('created', () => {
+          slider.container.addEventListener('mouseover', () => {
+            mouseOver = true
+            clearNextTimeout()
+          })
+          slider.container.addEventListener('mouseout', () => {
+            mouseOver = false
+            nextTimeout()
+          })
+          nextTimeout()
+        })
+        slider.on('dragStarted', clearNextTimeout)
+        slider.on('animationEnded', nextTimeout)
+        slider.on('updated', nextTimeout)
+      },
+    ]
+  )
+
   return (
     <>
       <Head>
@@ -90,13 +153,18 @@ export default function Start() {
             your data between apps. One profile for every app.
           </Description>
 
-          <CarouselWrapper>
-            <Image
-              src="https://i.ibb.co/n3qfzfN/Rectangle-2.jpg"
-              alt="ENS in Uniswap"
-              width={900}
-              height={280}
-            />
+          <CarouselWrapper ref={sliderRef} className="keen-slider">
+            {ensExamples.map((item) => (
+              <Slide className="keen-slider__slide" key={item.name}>
+                <Image
+                  src={item.image}
+                  alt={`ENS in ${item.name}`}
+                  width={900}
+                  height={280}
+                />
+                <label>{item.name}</label>
+              </Slide>
+            ))}
           </CarouselWrapper>
         </Why>
       </main>

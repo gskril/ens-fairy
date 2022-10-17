@@ -3033,6 +3033,11 @@ keccak@^3.0.0, keccak@^3.0.1:
     node-gyp-build "^4.2.0"
     readable-stream "^3.6.0"
 
+keen-slider@^6.8.2:
+  version "6.8.2"
+  resolved "https://registry.yarnpkg.com/keen-slider/-/keen-slider-6.8.2.tgz#be03e2225cde2a829df53e71c15caed66fbbe82a"
+  integrity sha512-vMVLPVfgTkLTNseKM42hnOJz/k/C4x4atCJqKRmPh2Mb4L/+Pzh4qvq9k6qT7/pKBxnsNxOlcxq80NoZq/N3Iw==
+
 keyvaluestorage-interface@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/keyvaluestorage-interface/-/keyvaluestorage-interface-1.0.0.tgz#13ebdf71f5284ad54be94bd1ad9ed79adad515ff"
