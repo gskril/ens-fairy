@@ -1,7 +1,7 @@
-import toast from 'react-hot-toast'
-import { useDisconnect } from 'wagmi'
 import { Button, Profile } from '@ensdomains/thorin'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
+import { useDisconnect } from 'wagmi'
 
 export default function ConnectButtonWrapper() {
   const { disconnect } = useDisconnect()

@@ -1,15 +1,16 @@
-import '../styles/globals.css'
-import '@rainbow-me/rainbowkit/styles.css'
-import { ThemeProvider } from 'styled-components'
 import { ThorinGlobalStyles, lightTheme } from '@ensdomains/thorin'
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit'
+import '@rainbow-me/rainbowkit/styles.css'
+import PlausibleProvider from 'next-plausible'
+import { ThemeProvider } from 'styled-components'
 import { chain, configureChains, createClient, WagmiConfig } from 'wagmi'
 import { infuraProvider } from 'wagmi/providers/infura'
 import { publicProvider } from 'wagmi/providers/public'
-import PlausibleProvider from 'next-plausible'
+
+import '../styles/globals.css'
 
 const { chains, provider } = configureChains(
-  [chain.mainnet, chain.rinkeby],
+  [chain.mainnet, chain.goerli],
   [infuraProvider({}), publicProvider()]
 )
 

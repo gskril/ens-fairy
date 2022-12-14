@@ -1,5 +1,3 @@
-import crypto from 'crypto'
-import { useState, useEffect } from 'react'
 import {
   Button,
   CountdownCircle,
@@ -9,12 +7,12 @@ import {
   Spinner,
   Typography,
 } from '@ensdomains/thorin'
-import {
-  ensRegistrarConfig,
-  ensResolver,
-  ensResolverRinkeby,
-} from '../lib/constants'
+import crypto from 'crypto'
+import { usePlausible } from 'next-plausible'
+import { useState, useEffect } from 'react'
+import Confetti from 'react-confetti'
 import toast from 'react-hot-toast'
+import useWindowSize from 'react-use/lib/useWindowSize'
 import {
   useContractRead,
   useContractWrite,
@@ -23,10 +21,13 @@ import {
   useEnsAvatar,
   useWaitForTransaction,
 } from 'wagmi'
-import Confetti from 'react-confetti'
+
+import {
+  ensRegistrarConfig,
+  ensResolver,
+  ensResolverRinkeby,
+} from '../lib/constants'
 import Details from './tx-summary'
-import { usePlausible } from 'next-plausible'
-import useWindowSize from 'react-use/lib/useWindowSize'
 
 export default function Registration({
   commitCost,
@@ -248,7 +249,7 @@ export default function Registration({
             window.location.reload()
           } else if (commit.data) {
             return toast.error(
-              'You can\'t close the dialog during registration',
+              "You can't close the dialog during registration",
               {
                 style: {
                   maxWidth: '100%',

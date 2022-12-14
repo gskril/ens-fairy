@@ -1,12 +1,13 @@
-import Head from 'next/head'
-import Confetti from 'react-confetti'
-import Header from '../components/header'
-import { useEffect, useState } from 'react'
+import { Button, Dialog, Select, Typography } from '@ensdomains/thorin'
 import { usePlausible } from 'next-plausible'
+import Head from 'next/head'
+import { useEffect, useState } from 'react'
+import Confetti from 'react-confetti'
 import toast, { Toaster } from 'react-hot-toast'
 import useWindowSize from 'react-use/lib/useWindowSize'
-import { Button, Dialog, Select, Typography } from '@ensdomains/thorin'
 import { useAccount, useContractWrite, useWaitForTransaction } from 'wagmi'
+
+import Header from '../components/header'
 import {
   ensBaseRegistrarAddr,
   ensBaseRegistrarAbi,

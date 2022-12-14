@@ -1,6 +1,7 @@
-import Image from 'next/image'
-import { formatUsd } from '../lib/utils'
 import { lightTheme as theme } from '@ensdomains/thorin'
+import Image from 'next/image'
+
+import { formatUsd } from '../lib/utils'
 
 export default function Details({ estimate, name, recipient, ...props }) {
   return (

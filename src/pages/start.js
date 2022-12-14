@@ -1,5 +1,5 @@
-import Head from 'next/head'
 import { Button, Heading, Typography } from '@ensdomains/thorin'
+import Head from 'next/head'
 
 import Header from '../components/header'
 

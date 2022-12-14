@@ -1,13 +1,4 @@
-import Head from 'next/head'
-import Link from 'next/link'
-import { ethers } from 'ethers'
-import { useState } from 'react'
-import useFetch from '../hooks/fetch'
-import { formatUsd } from '../lib/utils'
-import Header from '../components/header'
-import toast, { Toaster } from 'react-hot-toast'
 import { normalize } from '@ensdomains/eth-ens-namehash'
-import Registration from '../components/registration-modal'
 import {
   Button,
   Checkbox,
@@ -15,8 +6,18 @@ import {
   Input,
   Typography,
 } from '@ensdomains/thorin'
+import { ethers } from 'ethers'
+import Head from 'next/head'
+import Link from 'next/link'
+import { useState } from 'react'
+import toast, { Toaster } from 'react-hot-toast'
 import { useAccount, useNetwork, useProvider } from 'wagmi'
+
+import Header from '../components/header'
+import Registration from '../components/registration-modal'
+import useFetch from '../hooks/fetch'
 import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
+import { formatUsd } from '../lib/utils'
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false)
