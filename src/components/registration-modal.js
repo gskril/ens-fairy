@@ -30,12 +30,10 @@ import {
 import Details from './tx-summary'
 
 export default function Registration({
-  commitCost,
   duration,
   name,
   open,
   owner,
-  registrationCost,
   setIsOpen,
 }) {
   const plausible = usePlausible()

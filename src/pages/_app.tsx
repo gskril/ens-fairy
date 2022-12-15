@@ -11,9 +11,16 @@ import { publicProvider } from 'wagmi/providers/public'
 
 import '../styles/globals.css'
 
+if (!process.env.NEXT_PUBLIC_INFURA_KEY) {
+  throw new Error('Missing NEXT_PUBLIC_INFURA_KEY')
+}
+
 const { chains, provider } = configureChains(
   [mainnet, goerli],
-  [infuraProvider({ apiKey: '' }), publicProvider()]
+  [
+    infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_KEY }),
+    publicProvider(),
+  ]
 )
 
 const { connectors } = getDefaultWallets({
