@@ -34,11 +34,7 @@ export default function Home() {
   })
 
   useEffect(() => {
-    console.log('trigger')
-    if (price !== '') {
-      console.log(price)
-      setNamePrice(price)
-    }
+    if (price !== '') setNamePrice(price)
   }, [price])
 
   const provider = useProvider()
