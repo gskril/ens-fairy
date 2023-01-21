@@ -8,6 +8,8 @@ import {
   Typography,
 } from '@ensdomains/thorin'
 import crypto from 'crypto'
+import { BigNumber } from 'ethers'
+import { parseEther } from 'ethers/lib/utils.js'
 import { usePlausible } from 'next-plausible'
 import { useState, useEffect } from 'react'
 import Confetti from 'react-confetti'
@@ -16,18 +18,24 @@ import useWindowSize from 'react-use/lib/useWindowSize'
 import {
   useContractRead,
   useContractWrite,
+  usePrepareContractWrite,
   useNetwork,
   useProvider,
   useEnsAvatar,
   useWaitForTransaction,
 } from 'wagmi'
 
-import {
-  ensRegistrarConfig,
-  ensResolver,
-  ensResolverRinkeby,
-} from '../lib/constants'
+import { usePrice } from '../hooks/usePrice'
+import { ensRegistrarConfig, ensResolver } from '../lib/constants'
 import Details from './tx-summary'
+
+type RegistrationProps = {
+  duration: number // seconds
+  name: string
+  open: boolean
+  owner: string
+  setIsOpen: (open: boolean) => void
+}
 
 export default function Registration({
   duration,
@@ -35,19 +43,22 @@ export default function Registration({
   open,
   owner,
   setIsOpen,
-}) {
+}: RegistrationProps) {
   const plausible = usePlausible()
   const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [secret] = useState(
     '0x656e736661697279' + crypto.randomBytes(24).toString('hex')
   )
   const { chain } = useNetwork()
-
   const provider = useProvider()
-  const [resolvedOwner, setResolvedOwner] = useState()
+
+  const [resolvedOwner, setResolvedOwner] = useState<{
+    name: string
+    avatar: string | null | undefined
+  } | null>()
 
   const ensAvatar = useEnsAvatar({
-    addressOrName: open && owner,
+    address: (owner as `0x${string}`) || '',
   })
 
   useEffect(() => {
@@ -70,27 +81,29 @@ export default function Registration({
   )
 
   // Contract read: make commitment
-  const commitment = useContractRead({
+  const { data: commitment } = useContractRead({
     ...ensRegistrarConfig,
-    functionName: open && 'makeCommitmentWithConfig',
+    functionName: 'makeCommitmentWithConfig',
     args: [
       name, // name
       owner, // owner
       secret, // secret
-      chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
+      ensResolver, // resolver
       owner, // addr
     ],
   })
 
-  // Contract write: commit
-  const commit = useContractWrite({
+  const { config: preparedCommit } = usePrepareContractWrite({
     ...ensRegistrarConfig,
-    functionName: 'commit',
-    args: commitment?.data,
+    functionName: open ? 'commit' : undefined,
+    args: commitment ? [commitment] : [],
     onError: (err) => {
       toast.error(err.message)
     },
   })
+
+  // Contract write: commit
+  const commit = useContractWrite(preparedCommit)
 
   // Wait for commit to settle
   const [showCountdown, setShowCountdown] = useState(false)
@@ -105,16 +118,9 @@ export default function Registration({
     },
   })
 
-  // Contract read: price
-  const price = useContractRead({
-    ...ensRegistrarConfig,
-    functionName: open && 'rentPrice',
-    args: [name, duration],
-    watch: true,
-  })
+  const { price } = usePrice({ name, duration })
 
-  // Contract write: register
-  const register = useContractWrite({
+  const { config: preparedRegister } = usePrepareContractWrite({
     ...ensRegistrarConfig,
     functionName: 'registerWithConfig',
     args: [
@@ -122,17 +128,20 @@ export default function Registration({
       owner, // owner
       duration, // duration
       secret, // secret
-      chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
+      ensResolver, // resolver
       owner, // addr
     ],
     overrides: {
-      value: parseInt(price.data * 1.05).toString(),
-      gasLimit: '300000',
+      value: parseEther('0.01'),
+      gasLimit: BigNumber.from('300000'),
     },
     onError: (err) => {
       toast.error(err.message)
     },
   })
+
+  // Contract write: register
+  const register = useContractWrite(preparedRegister)
 
   // Wait for register to settle
   const [isRegistered, setIsRegistered] = useState(false)
@@ -150,7 +159,7 @@ export default function Registration({
         plausible('Name Registration', {
           props: {
             name: `${name}.eth`,
-            network: chain.name,
+            network: chain?.name,
           },
         })
       }
@@ -169,7 +178,6 @@ export default function Registration({
       )}
       <Dialog
         open={open}
-        className="modal"
         title={
           <Heading as="h2" align="center">
             {isRegistered ? 'Registration Complete!' : `Register ${name}.eth`}
@@ -217,7 +225,7 @@ export default function Registration({
             <Button
               as="a"
               href={`https://${
-                chain?.id === 4 ? 'rinkeby.' : ''
+                chain?.id === 5 ? 'goerli.' : ''
               }etherscan.io/tx/${register.data.hash}`}
               target="_blank"
               rel="noreferrer"
@@ -226,7 +234,7 @@ export default function Registration({
             </Button>
           ) : readyToRegister ? (
             // Show register button
-            <Button shadowless onClick={() => register.write()}>
+            <Button shadowless onClick={() => register.write?.()}>
               Register
             </Button>
           ) : commit?.data ? (
@@ -236,7 +244,7 @@ export default function Registration({
             </Button>
           ) : (
             // Show commit button
-            <Button shadowless onClick={() => commit.write()}>
+            <Button shadowless onClick={() => commit.write?.()}>
               Get Started
             </Button>
           )
@@ -281,11 +289,7 @@ export default function Registration({
             )}
           </Typography>
           {!isRegistered && (
-            <Details
-              estimate={commitCost + registrationCost}
-              name={name}
-              recipient={resolvedOwner}
-            />
+            <Details estimate={price} name={name} recipient={resolvedOwner} />
           )}
           <Typography size="base" weight="medium">
             <ul className="steps">
@@ -322,7 +326,7 @@ export default function Registration({
               </li>
               <li className="step">
                 <CountdownCircle
-                  countdownAmount={60}
+                  countdownSeconds={60}
                   disabled={!showCountdown}
                   style={{
                     marginTop: '-0.35rem',
