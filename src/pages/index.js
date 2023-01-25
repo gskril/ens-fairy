@@ -73,13 +73,12 @@ export default function Home() {
         <meta property="twitter:creator" content="@water3lab" />
         <meta
           name="description"
-          content="Register an ENS name directly to another address"
+          content="One Tx to register ENS 🔥"
         />
         <meta
           property="og:description"
-          content="Register an ENS name directly to another address"
+          content="One Tx to register ENS 🔥"
         />
-        <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
       <Header position="absolute" />
       <div className="container container--flex">

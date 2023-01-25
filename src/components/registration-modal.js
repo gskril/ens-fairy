@@ -12,7 +12,7 @@ import {
 import {
   ensRegistrarConfig,
   ensResolver,
-  ensResolverRinkeby,
+  ensResolverGoerli,
 } from '../lib/constants'
 import toast from 'react-hot-toast'
 import {
@@ -40,7 +40,7 @@ export default function Registration({
   const plausible = usePlausible()
   const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [secret] = useState(
-    '0x656e736661697279' + crypto.randomBytes(24).toString('hex')
+    '0x20f95b3198581c72' + crypto.randomBytes(24).toString('hex')
   )
   const { chain } = useNetwork()
 
@@ -67,7 +67,7 @@ export default function Registration({
   }, [ensAvatar, open, owner, provider])
 
   const twitterMessage = encodeURI(
-    `I just registered ${name}.eth for _________ on ensfairy.xyz!`
+    `I just registered ${name}.eth for _________ on flow.cryptoplaza.app!`
   )
 
   // Contract read: make commitment
@@ -78,7 +78,7 @@ export default function Registration({
       name, // name
       owner, // owner
       secret, // secret
-      chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
+      chain?.id === 1 ? ensResolver : ensResolverGoerli, // resolver
       owner, // addr
     ],
   })
@@ -123,7 +123,7 @@ export default function Registration({
       owner, // owner
       duration, // duration
       secret, // secret
-      chain?.id === 1 ? ensResolver : ensResolverRinkeby, // resolver
+      chain?.id === 1 ? ensResolver : ensResolverGoerli, // resolver
       owner, // addr
     ],
     overrides: {

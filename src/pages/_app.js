@@ -33,8 +33,8 @@ const App = ({ Component, pageProps }) => {
       <WagmiConfig client={wagmiClient}>
         <RainbowKitProvider chains={chains}>
           <PlausibleProvider
-            domain={isProdEnv ? 'ensfairy.xyz' : 'dev.ensfairy.xyz'}
-            trackLocalhost={!isProdEnv}
+            domain={isProdEnv ? 'flow.cryptoplaza.app' : 'flow.cryptoplaza.app'}
+            trackLocalhost={false}
             trackOutboundLinks
           >
             <Component {...pageProps} />
