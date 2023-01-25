@@ -10,10 +10,11 @@ import {
   Typography,
 } from '@ensdomains/thorin'
 import {
-  ensFlowConfigGoerli,
   ensRegistrarConfig,
   ensResolver,
   ensResolverGoerli,
+  ensFlowConfigMainnet,
+  ensFlowConfigGoerli
 } from '../lib/constants'
 import toast from 'react-hot-toast'
 import {
@@ -27,7 +28,7 @@ import {
 } from 'wagmi'
 import Confetti from 'react-confetti'
 import Details from './tx-summary'
-import { usePlausible } from 'next-plausible'
+// import { usePlausible } from 'next-plausible'
 import useWindowSize from 'react-use/lib/useWindowSize'
 
 export default function Registration({
@@ -39,7 +40,7 @@ export default function Registration({
   registrationCost,
   setIsOpen,
 }) {
-  const plausible = usePlausible()
+  // const plausible = usePlausible()
   const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [secret] = useState(
     '0x20f95b3198581c72' + crypto.randomBytes(24).toString('hex')
@@ -95,7 +96,7 @@ export default function Registration({
     watch: true,
   })
 
-  const ensFlowConfig = chain?.id === 1 ? ensFlowConfigMainnet : ensFlowConfigGoerli;
+  const ensFlowConfig = chain?.id === 1 ? ensFlowConfigMainnet : ensFlowConfigGoerli
   // Contract write: commit => registerCommit
   const commit = useContractWrite({
     ...ensFlowConfig,
@@ -159,27 +160,27 @@ export default function Registration({
   })
 
   // Wait for register to settle
-  const [isRegistered, setIsRegistered] = useState(false)
-  const waitForRegister = useWaitForTransaction({
-    hash: register?.data?.hash,
-    onSuccess: (data) => {
-      const didFail = data.status === 0
-      if (didFail) {
-        toast.error('Registration failed')
-      } else {
-        toast.success('Your name has been registered!')
-        setIsRegistered(true)
+  const [isRegistered] = useState(false)
+  // const waitForRegister = useWaitForTransaction({
+  //   hash: register?.data?.hash,
+  //   onSuccess: (data) => {
+  //     const didFail = data.status === 0
+  //     if (didFail) {
+  //       toast.error('Registration failed')
+  //     } else {
+  //       toast.success('Your name has been registered!')
+  //       setIsRegistered(true)
 
-        // Plausible Analytics
-        plausible('Name Registration', {
-          props: {
-            name: `${name}.eth`,
-            network: chain.name,
-          },
-        })
-      }
-    },
-  })
+  //       // Plausible Analytics
+  //       plausible('Name Registration', {
+  //         props: {
+  //           name: `${name}.eth`,
+  //           network: chain.name,
+  //         },
+  //       })
+  //     }
+  //   },
+  // })
 
   return (
     <>
@@ -354,15 +355,14 @@ export default function Registration({
                     filter: showCountdown ? 'grayscale(0%)' : 'grayscale(100%)',
                   }}
                 />
-              {showCountdown ? (
-                <p>
-                Delivering
-              </p>
-              ) : (
-                <p>
-                  
-                </p>
-              )}
+                {showCountdown ? (
+                  <p>
+                  Delivering
+                  </p>
+                ) : (
+                  <p>   
+                  </p>
+                )}
               </li>
               {/* <li className="step">
                 <Skeleton

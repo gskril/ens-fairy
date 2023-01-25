@@ -13,12 +13,12 @@ export const ensResolverGoerli = '0x2800Ec5BAB9CE9226d19E0ad5BC607e3cfC4347E'
 
 
 export const ensFlowConfigMainnet = {
-  addressOrName: "0xF745d9aA5178bEC7978C6690f38b946bEf299577",
+  addressOrName: '0xF745d9aA5178bEC7978C6690f38b946bEf299577',
   contractInterface: ensFlowAbi,
 }
 
 export const ensFlowConfigGoerli = {
-  addressOrName: "0x7dbB43fbe2f8Ea4722A74c91Fa3740224eC4B41d",
+  addressOrName: '0x7dbB43fbe2f8Ea4722A74c91Fa3740224eC4B41d',
   contractInterface: ensFlowAbi,
 }
 
