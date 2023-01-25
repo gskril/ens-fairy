@@ -17,6 +17,7 @@ import {
 } from '../lib/constants'
 import toast from 'react-hot-toast'
 import {
+  useAccount,
   useContractRead,
   useContractWrite,
   useNetwork,
@@ -84,12 +85,7 @@ export default function Registration({
     ],
   })
 
-  console.log("commitment 1: ", name, // name
-      owner, // owner
-      secret, // secret
-      chain?.id === 1 ? ensResolver : ensResolverGoerli, // resolver
-      owner)
-  console.log("commitment 2: ", commitment?.data);
+  const { address: sender } = useAccount()
 
   // Contract read: price
   const price = useContractRead({
@@ -113,6 +109,19 @@ export default function Registration({
       toast.error(err.message)
     },
   })
+
+  if (commitment?.data) {
+    const commitmentHash = commitment?.data
+    const obj = {
+      name, owner, secret, resolver: chain?.id === 1 ? ensResolver : ensResolverGoerli, 
+      commitment: commitmentHash,
+      value: parseInt(price?.data * 1.05).toString(),
+      sender,
+      duration
+    }
+    localStorage.setItem(commitmentHash, JSON.stringify(obj))
+  }
+
 
   // Wait for commit to settle
   // wait for 3 minutes 
@@ -252,7 +261,7 @@ export default function Registration({
           ) : (
             // Show commit button
             <Button shadowless onClick={() => commit.write()}>
-              Get Started
+              Pay Invoice
             </Button>
           )
         }
@@ -338,14 +347,24 @@ export default function Registration({
                   countdownAmount={180}
                   disabled={!showCountdown}
                   style={{
+                    display: showCountdown ? 'block' : 'none',
                     marginTop: '-0.35rem',
                     marginBottom: '-0.35rem',
                     transform: 'scale(0.8)',
                     filter: showCountdown ? 'grayscale(0%)' : 'grayscale(100%)',
                   }}
                 />
+              {showCountdown ? (
+                <p>
+                Delivering
+              </p>
+              ) : (
+                <p>
+                  
+                </p>
+              )}
               </li>
-              <li className="step">
+              {/* <li className="step">
                 <Skeleton
                   loading={!register.data}
                   style={{
@@ -390,7 +409,7 @@ export default function Registration({
                   )}
                 </Skeleton>
                 Register
-              </li>
+              </li> */}
             </ul>
           </Typography>
         </div>
