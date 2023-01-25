@@ -67,7 +67,7 @@ export default function Registration({
   }, [ensAvatar, open, owner, provider])
 
   const twitterMessage = encodeURI(
-    `I just registered ${name}.eth for _________ on flow.cryptoplaza.app!`
+    `I just registered ${name}.eth on flow.cryptoplaza.app!`
   )
 
   // Contract read: make commitment
@@ -218,7 +218,7 @@ export default function Registration({
             <Button
               as="a"
               href={`https://${
-                chain?.id === 4 ? 'rinkeby.' : ''
+                chain?.id === 5 ? 'goerli.' : ''
               }etherscan.io/tx/${register.data.hash}`}
               target="_blank"
               rel="noreferrer"

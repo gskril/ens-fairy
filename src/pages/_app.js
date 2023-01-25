@@ -9,12 +9,14 @@ import { publicProvider } from 'wagmi/providers/public'
 import PlausibleProvider from 'next-plausible'
 
 const { chains, provider } = configureChains(
-  [chain.mainnet, chain.rinkeby],
-  [infuraProvider({}), publicProvider()]
+  [chain.mainnet, chain.goerli],
+  [infuraProvider({
+    stallTimeout: 1_000,
+  }), publicProvider()]
 )
 
 const { connectors } = getDefaultWallets({
-  appName: 'My RainbowKit App',
+  appName: 'ENS Flow',
   chains,
 })
 
