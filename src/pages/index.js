@@ -169,7 +169,7 @@ export default function Home() {
           <div className="col">
             <Input
               label="Name"
-              placeholder="water3lab"
+              placeholder="yourname"
               maxLength="42"
               required
               spellCheck="false"
