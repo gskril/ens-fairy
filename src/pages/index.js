@@ -237,7 +237,7 @@ export default function Home() {
               weight="semiBold"
               color="textTertiary"
             >
-              Built with Love by @Water3Lab
+              Coming soon.. Launching in 9 AM ET, Jan, 26th, 2023.
             </Typography>
           </a>
         </Link>
