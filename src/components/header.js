@@ -8,7 +8,7 @@ export default function Header({ position }) {
       <Link href="/">
         <a>
           <Heading as="span" level="2" className="header__name">
-            ENS Fairy
+            ENS Flow
           </Heading>
         </a>
       </Link>

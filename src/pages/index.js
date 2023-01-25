@@ -25,7 +25,7 @@ export default function Home() {
   const [durationToRegister, setDurationToRegister] = useState(0)
   const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
   const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
-  const yearInSeconds = 365 * 24 * 60 * 60
+  const yearInSeconds = 31556952 // use the same value as ens.domains. not 365 * 24 * 60 * 60
   const durationInSeconds = (durationToRegister || 1) * yearInSeconds
 
   const provider = useProvider()
@@ -69,10 +69,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>ENS Fairy</title>
-        <meta property="og:title" content="ENS Fairy" />
+        <title>ENS Flow</title>
+        <meta property="og:title" content="ENS Flow" />
         <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:creator" content="@gregskril" />
+        <meta property="twitter:creator" content="@water3lab" />
         <meta
           name="description"
           content="Register an ENS name directly to another address"
@@ -89,9 +89,9 @@ export default function Home() {
           as="h1"
           level="1"
           align="center"
-          style={{ marginBottom: '2rem', lineHeight: '1' }}
+          style={{ marginBottom: '3rem', lineHeight: '1' }}
         >
-          Gift an ENS name
+          One Tx to register ENS 🔥
         </Heading>
         <form
           className="form"
@@ -169,7 +169,7 @@ export default function Home() {
           <div className="col">
             <Input
               label="Name"
-              placeholder="gregskril"
+              placeholder="water3lab"
               maxLength="42"
               required
               spellCheck="false"
@@ -218,28 +218,7 @@ export default function Home() {
           >
             Register
           </Button>
-          <div
-            style={{
-              margin: 'auto',
-            }}
-          >
-            <Checkbox
-              label="Send to The ENS Fairy Vault"
-              checked={ownerToRegisterText === 'ensfairy.xyz'}
-              onChange={() => {
-                const ensFairy = 'ensfairy.xyz'
 
-                if (ownerToRegister === ensFairy) {
-                  setOwnerToRegister(recipientBeforeCheckbox)
-                  setOwnerToRegisterText(recipientBeforeCheckbox)
-                } else {
-                  setRecipientBeforeCheckbox(ownerToRegisterText)
-                  setOwnerToRegister(ensFairy)
-                  setOwnerToRegisterText(ensFairy)
-                }
-              }}
-            />
-          </div>
           <Registration
             commitCost={commitCost}
             duration={durationInSeconds}
@@ -253,7 +232,7 @@ export default function Home() {
       </div>
 
       <div className="footer">
-        <Link href="/deposit">
+        <Link href="https://twitter.com/water3lab">
           <a>
             <Typography
               as="p"
@@ -261,7 +240,7 @@ export default function Home() {
               weight="semiBold"
               color="textTertiary"
             >
-              Send existing names to The ENS Fairy Vault
+              Built with Love by @Water3Lab
             </Typography>
           </a>
         </Link>

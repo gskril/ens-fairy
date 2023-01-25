@@ -275,9 +275,7 @@ export default function Registration({
               </>
             ) : (
               <p>
-                Registering an ENS name is a two step process. Between the steps
-                there is a 1 minute waiting period to protect your transaction
-                from getting front-run.
+                Registering an ENS name made easy. You only need to pay invoice, sit back and relax, and receive the names within few minutes.
               </p>
             )}
           </Typography>
