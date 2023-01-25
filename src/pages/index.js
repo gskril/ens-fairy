@@ -10,7 +10,6 @@ import { normalize } from '@ensdomains/eth-ens-namehash'
 import Registration from '../components/registration-modal'
 import {
   Button,
-  Checkbox,
   Heading,
   Input,
   Typography,
@@ -24,7 +23,6 @@ export default function Home() {
   const [ownerToRegister, setOwnerToRegister] = useState('')
   const [durationToRegister, setDurationToRegister] = useState(0)
   const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
-  const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
   const yearInSeconds = 31556952 // use the same value as ens.domains. not 365 * 24 * 60 * 60
   const durationInSeconds = (durationToRegister || 1) * yearInSeconds
 
