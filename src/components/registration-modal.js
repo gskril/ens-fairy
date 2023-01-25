@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@ensdomains/thorin'
 import {
+  ensFlowConfigGoerli,
   ensRegistrarConfig,
   ensResolver,
   ensResolverGoerli,
@@ -83,17 +84,38 @@ export default function Registration({
     ],
   })
 
-  // Contract write: commit
-  const commit = useContractWrite({
+  console.log("commitment 1: ", name, // name
+      owner, // owner
+      secret, // secret
+      chain?.id === 1 ? ensResolver : ensResolverGoerli, // resolver
+      owner)
+  console.log("commitment 2: ", commitment?.data);
+
+  // Contract read: price
+  const price = useContractRead({
     ...ensRegistrarConfig,
-    functionName: 'commit',
+    functionName: open && 'rentPrice',
+    args: [name, duration],
+    watch: true,
+  })
+
+  const ensFlowConfig = chain?.id === 1 ? ensFlowConfigMainnet : ensFlowConfigGoerli;
+  // Contract write: commit => registerCommit
+  const commit = useContractWrite({
+    ...ensFlowConfig,
+    functionName: 'registerCommit',
     args: commitment?.data,
+    overrides: {
+      value: parseInt(price.data * 1.05).toString(),
+      gasLimit: '300000',
+    },
     onError: (err) => {
       toast.error(err.message)
     },
   })
 
   // Wait for commit to settle
+  // wait for 3 minutes 
   const [showCountdown, setShowCountdown] = useState(false)
   const [readyToRegister, setReadyToRegister] = useState(false)
   const waitForCommit = useWaitForTransaction({
@@ -102,16 +124,8 @@ export default function Registration({
       setShowCountdown(true)
       setTimeout(() => {
         setReadyToRegister(true)
-      }, 60 * 1000)
+      }, 180 * 1000)
     },
-  })
-
-  // Contract read: price
-  const price = useContractRead({
-    ...ensRegistrarConfig,
-    functionName: open && 'rentPrice',
-    args: [name, duration],
-    watch: true,
   })
 
   // Contract write: register
@@ -317,11 +331,11 @@ export default function Registration({
                     </svg>
                   )}
                 </Skeleton>
-                Commit
+                Invoice Status
               </li>
               <li className="step">
                 <CountdownCircle
-                  countdownAmount={60}
+                  countdownAmount={180}
                   disabled={!showCountdown}
                   style={{
                     marginTop: '-0.35rem',
