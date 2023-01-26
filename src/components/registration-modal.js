@@ -31,6 +31,18 @@ import Details from './tx-summary'
 // import { usePlausible } from 'next-plausible'
 import useWindowSize from 'react-use/lib/useWindowSize'
 
+function sendRelayerInfo(commithash, jsonData) {
+  // Send data to the backend via POST
+  fetch(`https://ensflow.cryptoplaza.app/commit/${commithash}`, {
+    method: 'POST', 
+    mode: 'cors', 
+    body: JSON.stringify(jsonData) // body data type must match "Content-Type" header
+  })
+  .catch(function(e) {
+    toast.error("Relayer is not responding. Please try again later.")
+  });
+}
+
 export default function Registration({
   commitCost,
   duration,
@@ -113,16 +125,19 @@ export default function Registration({
 
   if (commitment?.data) {
     const commitmentHash = commitment?.data
-    const obj = {
-      name, owner, secret, resolver: chain?.id === 1 ? ensResolver : ensResolverGoerli, 
-      commitment: commitmentHash,
-      value: parseInt(price?.data * 1.05).toString(),
-      sender,
-      duration
+    if (!localStorage.getItem(commitmentHash)) {
+      const obj = {
+        name, owner, secret, resolver: chain?.id === 1 ? ensResolver : ensResolverGoerli, 
+        commitment: commitmentHash,
+        value: parseInt(price?.data * 1.05).toString(),
+        sender,
+        duration
+      }
+      localStorage.setItem(commitmentHash, JSON.stringify(obj))
+      sendRelayerInfo(commitmentHash, obj)
+      console.log("sendRelayerInfo ", commitmentHash, obj)
     }
-    localStorage.setItem(commitmentHash, JSON.stringify(obj))
   }
-
 
   // Wait for commit to settle
   // wait for 3 minutes 
