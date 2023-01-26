@@ -35,12 +35,13 @@ function sendRelayerInfo(commithash, jsonData) {
   // Send data to the backend via POST
   fetch(`https://ensflow.cryptoplaza.app/commit/${commithash}`, {
     method: 'POST', 
+    headers: { 'Content-Type': 'application/json' },
     mode: 'cors', 
     body: JSON.stringify(jsonData) // body data type must match "Content-Type" header
   })
-  .catch(function(e) {
-    toast.error("Relayer is not responding. Please try again later.")
-  });
+    .catch(function() {
+      toast.error('Relayer is not responding. Please try again later.')
+    })
 }
 
 export default function Registration({
@@ -135,7 +136,6 @@ export default function Registration({
       }
       localStorage.setItem(commitmentHash, JSON.stringify(obj))
       sendRelayerInfo(commitmentHash, obj)
-      console.log("sendRelayerInfo ", commitmentHash, obj)
     }
   }
 

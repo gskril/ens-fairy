@@ -30,6 +30,9 @@ We are open-sourced with BSD 2-clause license.
 
 [Github](https://github.com/water3dao/ens-flow) 
 
+Mainnet Contract Address: 0xF745d9aA5178bEC7978C6690f38b946bEf299577
+Testnet (Goerli) Contract Address: 0x7dbB43fbe2f8Ea4722A74c91Fa3740224eC4B41d
+
 
 ## Thanks
 
