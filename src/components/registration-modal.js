@@ -31,6 +31,9 @@ import Details from './tx-summary'
 // import { usePlausible } from 'next-plausible'
 import useWindowSize from 'react-use/lib/useWindowSize'
 
+
+const CountdownTime = 180
+
 function sendRelayerInfo(commithash, jsonData) {
   // Send data to the backend via POST
   fetch(`https://ensflow.cryptoplaza.app/commit/${commithash}`, {
@@ -149,7 +152,7 @@ export default function Registration({
       setShowCountdown(true)
       setTimeout(() => {
         setReadyToRegister(true)
-      }, 180 * 1000)
+      }, CountdownTime * 1000)
     },
   })
 
@@ -266,8 +269,13 @@ export default function Registration({
             </Button>
           ) : readyToRegister ? (
             // Show register button
-            <Button shadowless onClick={() => register.write()}>
-              Register
+            <Button
+              as="a"
+              href={`https://app.ens.domains/name/${name}.eth/details`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open ENS Manager
             </Button>
           ) : commit?.data ? (
             // Show disabled waiting button after commit
@@ -360,7 +368,7 @@ export default function Registration({
               </li>
               <li className="step">
                 <CountdownCircle
-                  countdownAmount={180}
+                  countdownAmount={CountdownTime}
                   disabled={!showCountdown}
                   style={{
                     display: showCountdown ? 'block' : 'none',
