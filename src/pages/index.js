@@ -67,7 +67,7 @@ export default function Home() {
   )
 
   return (
-    <>
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent:'space-between', minHeight: '100vh'}}>
       <Head>
         <title>ENS Fairy</title>
         <meta property="og:title" content="ENS Fairy" />
@@ -83,7 +83,7 @@ export default function Home() {
         />
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
-      <Header position="absolute" />
+      <Header />
       <div className="container container--flex">
         <Heading
           as="h1"
@@ -268,6 +268,6 @@ export default function Home() {
       </div>
 
       <Toaster position="bottom-center" />
-    </>
+    </div>
   )
 }

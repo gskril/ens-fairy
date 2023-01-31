@@ -13,7 +13,7 @@ p a {
 
 .header {
   width: 100%;
-  padding: 3rem 4rem;
+  padding: 3rem 4rem 1.5rem;
   display: flex;
   z-index: 101;
   justify-content: space-between;
@@ -51,7 +51,6 @@ p a {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
 }
 
 .container--lg {
@@ -71,13 +70,10 @@ p a {
 }
 
 .footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
   width: 100%;
   padding: 2rem 4rem;
   display: flex;
+  /* min-height: 50px; */
   justify-content: center;
   align-items: center;
   text-align: center;

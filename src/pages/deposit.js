@@ -102,7 +102,7 @@ export default function Depost() {
         />
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
-      <Header position="absolute" />
+      <Header />
 
       {nameTransferred && (
         <Confetti
