@@ -3,6 +3,8 @@ Only 1 transaction to get your ENS name
 
 ## What we do?
 
+(ENSFlow is inspired by Greg Ens fairy website design. We build the backend part of our project on our own.)
+
 Currently registering a name requires 3 steps, a commit, wait, reveal. The process might be complicated for the newbee users on ENS or Ethereum.
 
 We built ENSFlow to simplify the process. You only need to pay the invoice for the ENS names, sit back and relax, and receive the names within few minutes. Smoother experience for the user without the custodian risk.
