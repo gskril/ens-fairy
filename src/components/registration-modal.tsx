@@ -47,7 +47,7 @@ export default function Registration({
   const plausible = usePlausible()
   const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [secret] = useState(
-    '0x656e736661697279' + crypto.randomBytes(24).toString('hex')
+    '0x03acfad5' + crypto.randomBytes(28).toString('hex')
   )
   const { chain } = useNetwork()
   const provider = useProvider()
