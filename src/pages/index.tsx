@@ -1,24 +1,15 @@
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  Heading,
-  Input,
-  Typography,
-} from '@ensdomains/thorin'
+import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import Head from 'next/head'
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
-import toast, { LoaderIcon, Toaster } from 'react-hot-toast'
+import { LoaderIcon, Toaster } from 'react-hot-toast'
 import { isAddress } from 'viem'
 import { normalize } from 'viem/ens'
-import { getEnsAddress } from 'viem/ens'
 import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
 
 import { Nav } from '../components/Nav'
 import { Layout } from '../components/atoms'
-import Header from '../components/header'
 import useDebounce from '../hooks/useDebounce'
 import { getRegistrar } from '../lib/constants'
 
@@ -33,7 +24,6 @@ export default function Home() {
 
   const [_recipientInput, setRecipientInput] = useState('')
   const recipientInput = useDebounce(_recipientInput, 500)
-  // const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [durationToRegister, setDurationToRegister] = useState(1)
@@ -197,29 +187,6 @@ export default function Home() {
                 Register
               </Button>
             )}
-
-            {/* <div
-              style={{
-                margin: 'auto',
-              }}
-            >
-              <Checkbox
-                label="Send to The ENS Fairy Vault"
-                checked={ownerToRegisterText === 'ensfairy.xyz'}
-                onChange={() => {
-                  const ensFairy = 'ensfairy.xyz'
-
-                  if (ownerToRegister === ensFairy) {
-                    setOwnerToRegister(recipientBeforeCheckbox)
-                    setOwnerToRegisterText(recipientBeforeCheckbox)
-                  } else {
-                    setRecipientBeforeCheckbox(ownerToRegisterText)
-                    setOwnerToRegister(ensFairy)
-                    setOwnerToRegisterText(ensFairy)
-                  }
-                }}
-              />
-            </div> */}
           </form>
         </div>
 
