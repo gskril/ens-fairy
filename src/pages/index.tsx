@@ -1,117 +1,98 @@
-import { normalize } from '@ensdomains/eth-ens-namehash'
 import {
   Button,
   Checkbox,
+  Dialog,
   Heading,
   Input,
   Typography,
 } from '@ensdomains/thorin'
-import { ethers } from 'ethers'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import Head from 'next/head'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import toast, { Toaster } from 'react-hot-toast'
-import { useAccount, useNetwork, useProvider } from 'wagmi'
+import { FormEvent, useState } from 'react'
+import toast, { LoaderIcon, Toaster } from 'react-hot-toast'
+import { isAddress } from 'viem'
+import { normalize } from 'viem/ens'
+import { getEnsAddress } from 'viem/ens'
+import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
 
+import { Nav } from '../components/Nav'
+import { Layout } from '../components/atoms'
 import Header from '../components/header'
-import Registration from '../components/registration-modal'
-import { usePrice } from '../hooks/usePrice'
-import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
-import { yearsToSeconds } from '../utils'
+import useDebounce from '../hooks/useDebounce'
+import { getRegistrar } from '../lib/constants'
 
 export default function Home() {
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [nameToRegister, setNameToRegister] = useState('')
-  const [ownerToRegister, setOwnerToRegister] = useState('')
-  const [durationToRegister, setDurationToRegister] = useState(0)
-  const [ownerToRegisterText, setOwnerToRegisterText] = useState('')
-  const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
-  const [namePrice, setNamePrice] = useState<string>('')
+  const { chain } = useNetwork()
+  const { address: isConnected } = useAccount()
+  const { openConnectModal } = useConnectModal()
 
-  const { price } = usePrice({
-    name: nameToRegister,
-    duration: durationToRegister,
+  const [_nameToRegister, setNameToRegister] = useState('')
+  const _nameToRegisterUnnormalized = useDebounce(_nameToRegister, 500)
+  const [nameToRegisterIsInvalid, setNameToRegisterIsInvalid] = useState(false)
+
+  const [_recipientInput, setRecipientInput] = useState('')
+  const recipientInput = useDebounce(_recipientInput, 500)
+  // const [recipientBeforeCheckbox, setRecipientBeforeCheckbox] = useState('')
+
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [durationToRegister, setDurationToRegister] = useState(1)
+  const registrarController = getRegistrar()
+
+  // If the debounced recipient input might be an ENS name, try to resolve it
+  const { data: recipientEnsAddress, isLoading: isRecipientEnsAddressLoading } =
+    useEnsAddress({
+      name: recipientInput?.includes('.') ? recipientInput : undefined,
+    })
+
+  // Handle address or ENS input as recipient
+  const recipientAddress = recipientEnsAddress
+    ? recipientEnsAddress
+    : isAddress(recipientInput)
+    ? recipientInput
+    : undefined
+
+  // Normalize input and return label to register (without ".eth")
+  const nameToRegister = () => {
+    try {
+      const cleanedName = _nameToRegisterUnnormalized
+        ? _nameToRegisterUnnormalized.endsWith('')
+          ? normalize(_nameToRegisterUnnormalized.split('.eth')[0])
+          : normalize(_nameToRegisterUnnormalized)
+        : ''
+
+      if (cleanedName.includes('.')) {
+        throw Error()
+      }
+
+      if (nameToRegisterIsInvalid) {
+        setNameToRegisterIsInvalid(false)
+      }
+
+      return cleanedName
+    } catch (err) {
+      if (!nameToRegisterIsInvalid) {
+        setNameToRegisterIsInvalid(true)
+      }
+
+      return undefined
+    }
+  }
+
+  // Check if the debounced name is available
+  const { data: isAvailable, isLoading: isAvailableLoading } = useContractRead({
+    ...registrarController,
+    functionName: !!nameToRegister() ? 'available' : undefined,
+    args: !!nameToRegister() ? [nameToRegister()!] : undefined,
   })
 
-  useEffect(() => {
-    if (price !== '') setNamePrice(price)
-  }, [price])
-
-  const provider = useProvider()
-  const { chain, chains } = useNetwork()
-  const { address: isConnected } = useAccount()
-  const ethRegistrar = new ethers.Contract(
-    ensRegistrarAddr,
-    ensRegistrarAbi,
-    provider
-  )
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (nameToRegister.length < 3) {
-      toast.error('.eth names must be at least 3 characters')
-      return
-    }
-
-    // Normalize name
-    try {
-      const normalizedName = normalize(nameToRegister)
-      setNameToRegister(normalizedName)
-    } catch (e) {
-      toast.error(`${nameToRegister}.eth is not a valid name`)
-      return
-    }
-
-    // Validate name
-    const isNameAvailable = await ethRegistrar.available(
-      nameToRegister.toLowerCase()
-    )
-    if (!isNameAvailable) {
-      return toast.error(`${nameToRegister}.eth is not available`)
-    }
-
-    // Check wallet connection
     if (!isConnected) {
-      return toast.error('Connect your wallet')
-    }
-
-    // Check the connected chain
-    if (!chains.some((c) => c.id === chain?.id)) {
-      return toast.error('Switch to a supported network')
-    }
-
-    // Validate owner
-    if (!ownerToRegister) {
-      return toast.error('Please enter a recipient address')
-    }
-
-    let isValidOwner = false
-    if (ethers.utils.isAddress(ownerToRegister)) {
-      isValidOwner = true
-    } else {
-      try {
-        const resolvedName = await provider.resolveName(ownerToRegister)
-        if (resolvedName) {
-          isValidOwner = true
-          setOwnerToRegister(resolvedName)
-        }
-      } catch {
-        isValidOwner = false
-      }
-    }
-
-    if (!isValidOwner) {
-      return toast.error(`${ownerToRegister} is not a valid address`)
-    }
-
-    // Check that a duration is set
-    if (durationToRegister < 1) {
-      toast.error('Please set a duration')
+      openConnectModal?.()
       return
     }
-
-    setDialogOpen(true)
   }
 
   return (
@@ -132,122 +113,124 @@ export default function Home() {
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
 
-      <Header position="absolute" />
+      <Layout>
+        <Nav />
 
-      <div className="container container--flex">
-        <Heading
-          as="h1"
-          level="1"
-          align="center"
-          style={{ marginBottom: '2rem', lineHeight: '1' }}
-        >
-          Gift an ENS name
-        </Heading>
-
-        <form className="form" onSubmit={async (e) => handleSubmit(e)}>
-          <div className="col">
-            <Input
-              label="Name"
-              placeholder="gregskril"
-              maxLength={42}
-              required
-              spellCheck="false"
-              autoCapitalize="none"
-              suffix=".eth"
-              parentStyles={{ backgroundColor: '#fff' } as any}
-              onChange={(e) => setNameToRegister(e.target.value)}
-            />
-
-            <Input
-              label="Recipient"
-              placeholder="0xA0Cf…251e"
-              value={ownerToRegisterText}
-              maxLength={42}
-              required
-              spellCheck="false"
-              autoCapitalize="none"
-              parentStyles={
-                {
-                  width: '20rem',
-                  backgroundColor: '#fff',
-                } as any
-              }
-              onChange={(e) => {
-                setOwnerToRegister(e.target.value)
-                setOwnerToRegisterText(e.target.value)
-              }}
-            />
-
-            <Input
-              label="Duration"
-              placeholder="1"
-              type="number"
-              units={durationToRegister > 1 ? 'years' : 'year'}
-              required
-              min={1}
-              max={10}
-              parentStyles={{ backgroundColor: '#fff' } as any}
-              onChange={(e) => setDurationToRegister(Number(e.target.value))}
-            />
-          </div>
-
-          <Button
-            type="submit"
-            variant="action"
-            suffix={<span>{namePrice}</span>}
+        <div>
+          <Heading
+            as="h1"
+            level="1"
+            align="center"
+            style={{ marginBottom: '2rem', lineHeight: '1' }}
           >
-            Register
-          </Button>
+            Gift an ENS name
+          </Heading>
 
-          <div
-            style={{
-              margin: 'auto',
-            }}
-          >
-            <Checkbox
-              label="Send to The ENS Fairy Vault"
-              checked={ownerToRegisterText === 'ensfairy.xyz'}
-              onChange={() => {
-                const ensFairy = 'ensfairy.xyz'
-
-                if (ownerToRegister === ensFairy) {
-                  setOwnerToRegister(recipientBeforeCheckbox)
-                  setOwnerToRegisterText(recipientBeforeCheckbox)
-                } else {
-                  setRecipientBeforeCheckbox(ownerToRegisterText)
-                  setOwnerToRegister(ensFairy)
-                  setOwnerToRegisterText(ensFairy)
+          <form className="form" onSubmit={handleSubmit}>
+            <div className="col">
+              <Input
+                label="Name"
+                placeholder="gregskril"
+                maxLength={42}
+                spellCheck="false"
+                autoCapitalize="none"
+                suffix=".eth"
+                error={
+                  nameToRegisterIsInvalid
+                    ? 'Invalid name'
+                    : isAvailable === false
+                    ? 'Not available'
+                    : undefined
                 }
+                onChange={(e) => setNameToRegister(e.target.value)}
+              />
+
+              <Input
+                label="Recipient"
+                placeholder="0xA0Cf…251e"
+                maxLength={42}
+                suffix={
+                  isRecipientEnsAddressLoading ? <LoaderIcon /> : undefined
+                }
+                spellCheck="false"
+                autoCapitalize="none"
+                parentStyles={
+                  {
+                    width: '20rem',
+                  } as any
+                }
+                error={
+                  recipientAddress === undefined && !!recipientInput
+                    ? 'Invalid address'
+                    : undefined
+                }
+                onChange={(e) => setRecipientInput(e.target.value)}
+              />
+
+              <Input
+                label="Duration"
+                placeholder="1 year"
+                inputMode="numeric"
+                error={
+                  !/[1-9]/.test(durationToRegister.toString())
+                    ? 'Invalid number'
+                    : undefined
+                }
+                suffix={durationToRegister > 1 ? 'years' : 'year'}
+                onChange={(e) => setDurationToRegister(Number(e.target.value))}
+              />
+            </div>
+
+            {!isConnected ? (
+              <Button type="submit">Connect Wallet</Button>
+            ) : (
+              <Button
+                type="submit"
+                loading={isAvailableLoading}
+                disabled={
+                  !nameToRegister() ||
+                  !recipientAddress ||
+                  isAvailable === false
+                }
+                suffix={chain?.id === 5 ? <span>({chain?.name})</span> : <></>}
+              >
+                Register
+              </Button>
+            )}
+
+            {/* <div
+              style={{
+                margin: 'auto',
               }}
-            />
-          </div>
+            >
+              <Checkbox
+                label="Send to The ENS Fairy Vault"
+                checked={ownerToRegisterText === 'ensfairy.xyz'}
+                onChange={() => {
+                  const ensFairy = 'ensfairy.xyz'
 
-          {/* {dialogOpen && (
-            <Registration
-              duration={yearsToSeconds(durationToRegister)}
-              name={nameToRegister}
-              open={dialogOpen}
-              owner={ownerToRegister}
-              setIsOpen={setDialogOpen}
-            />
-          )} */}
-        </form>
-      </div>
+                  if (ownerToRegister === ensFairy) {
+                    setOwnerToRegister(recipientBeforeCheckbox)
+                    setOwnerToRegisterText(recipientBeforeCheckbox)
+                  } else {
+                    setRecipientBeforeCheckbox(ownerToRegisterText)
+                    setOwnerToRegister(ensFairy)
+                    setOwnerToRegisterText(ensFairy)
+                  }
+                }}
+              />
+            </div> */}
+          </form>
+        </div>
 
-      <div className="footer">
         <Link href="/deposit">
           <a>
-            <Typography
-              as="p"
-              size="base"
-              weight="semiBold"
-              color="textTertiary"
-            >
+            <Typography asProp="p" color="textTertiary">
               Send existing names to The ENS Fairy Vault
             </Typography>
           </a>
         </Link>
-      </div>
+      </Layout>
 
       <Toaster position="bottom-center" />
     </>

@@ -1,48 +1,62 @@
-import { BigNumber } from 'ethers'
-import { formatEther } from 'ethers/lib/utils.js'
-import { useContractRead } from 'wagmi'
+import { formatEther } from 'viem'
+import { useContractRead, useNetwork } from 'wagmi'
 
-import { ensRegistrarAddr, ensRegistrarAbi } from '../lib/constants'
-import { yearsToSeconds } from '../utils'
-import useFetch from './fetch'
+import { TOTAL_GAS_AMOUNT, getRegistrar } from '../lib/constants'
+import { parseDuration, parseName } from '../utils'
+import { useFetch } from './useFetch'
 
-type UsePrice = {
-  name: string | undefined
-  duration: number | undefined
+interface Cost {
+  name: string
+  duration: string
+  isConnected: boolean
 }
 
-type Price = {
-  price: string
+interface CostReturn {
+  rentEth: string | null
+  cost: string | null
+  isLoading: boolean
+  isError: boolean
 }
 
-export function usePrice({ name, duration }: UsePrice): Price {
-  const gasApi = useFetch('https://gas.best/stats')
-  const gasPrice = gasApi.data?.pending?.fee + 1
-  const ethPrice = gasApi.data?.ethPrice
+export const usePrice = ({
+  name: _name,
+  duration,
+  isConnected,
+}: Cost): CostReturn => {
+  const enabled = isConnected && _name && duration ? true : false
 
-  const { data, isError, isLoading } = useContractRead({
-    address: name && ensRegistrarAddr,
-    abi: ensRegistrarAbi,
+  const { chain } = useNetwork()
+  const { data: gasbest } = useFetch<any>(
+    enabled ? 'https://gas.best/stats' : undefined
+  )
+
+  const gasPrice = gasbest ? (gasbest.pending.fee as number) : null
+  const ethPrice = gasbest ? (gasbest.ethPrice as number) : null
+
+  const name = parseName(_name)
+  const seconds = parseDuration(duration)
+  const ensRegistrarConfig = getRegistrar()
+
+  const { data: rentPrice, isError: isRentPriceError } = useContractRead({
+    ...ensRegistrarConfig,
     functionName: 'rentPrice',
-    args: [name, yearsToSeconds(duration)],
-    cacheOnBlock: true,
+    args: [name, BigInt(seconds)],
+    enabled,
   })
 
-  if (isError || !data || !name) {
-    return { price: '' }
+  const rentPriceInEth = rentPrice ? formatEther(rentPrice) : null
+  const gasCostInGwei = gasPrice ? gasPrice * TOTAL_GAS_AMOUNT : null
+  const gasCostInEth = gasCostInGwei ? gasCostInGwei / 1e9 : null
+  const finalCostEth = Number(rentPriceInEth) + Number(gasCostInEth)
+  const finalCostUSD = ethPrice ? (finalCostEth * ethPrice).toFixed(2) : null
+
+  return {
+    rentEth: rentPriceInEth,
+    cost: finalCostUSD ? `$${finalCostUSD.toString()}` : null,
+    isLoading:
+      enabled &&
+      !isRentPriceError &&
+      (!rentPriceInEth || !gasCostInEth || !finalCostEth),
+    isError: isRentPriceError,
   }
-
-  const priceWei = data as BigNumber
-  const priceEthStr = formatEther(priceWei)
-  const priceEthBeforeGas = Number(parseFloat(priceEthStr).toFixed(4))
-
-  const commitGasAmount = 50000
-  const registrationGasAmount = 300000
-  const totalGasAmount = commitGasAmount + registrationGasAmount
-  const priceEthOfGas = totalGasAmount * gasPrice * 0.000000001
-
-  const totalPriceUsd = ethPrice * (priceEthBeforeGas + priceEthOfGas)
-  const totalPriceUsdStr = totalPriceUsd.toFixed(2)
-
-  return { price: '$' + totalPriceUsdStr }
 }
