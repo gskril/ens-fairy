@@ -1,15 +1,13 @@
-import {
-  Button,
-  CountdownCircle,
-  Dialog,
-  Heading,
-  Skeleton,
-  Spinner,
-  Typography,
-} from '@ensdomains/thorin'
+import { Dialog, mq } from '@ensdomains/thorin'
+import { useState } from 'react'
+import styled, { css } from 'styled-components'
+import { useEnsAvatar, useEnsName } from 'wagmi'
 
 import { useIsMounted } from '../hooks/useIsMounted'
-import Details from './tx-summary'
+import { shortenAddress } from '../utils'
+import { RegistrationSteps, Step } from './RegistrationSteps'
+import { CardDescription } from './atoms'
+import TxSummary from './tx-summary'
 
 type RegistrationProps = {
   open: boolean
@@ -20,21 +18,69 @@ type RegistrationProps = {
 }
 
 export default function Registration({
-  open,
+  open: isOpen,
   label,
-  recipient,
+  recipient: recipientAddress, // address
   duration, // years
   setIsOpen,
 }: RegistrationProps) {
   const isMounted = useIsMounted()
+  const [step, setStep] = useState<Step>(0)
 
-  if (!isMounted) return null
+  const { data: recipientEnsName } = useEnsName({
+    address: isOpen ? recipientAddress : undefined,
+    chainId: 1,
+  })
 
-  console.log({ open, label, recipient, duration, setIsOpen })
+  const { data: recipientAvatar } = useEnsAvatar({
+    name: recipientEnsName,
+    chainId: 1,
+  })
+
+  if (!isMounted || !label || !recipientAddress || !duration) return null
+
+  // prettier-ignore
+  const recipientDisplayName = recipientEnsName || shortenAddress(recipientAddress)
 
   return (
-    <Dialog open={open} onDismiss={() => setIsOpen(false)} variant="actionable">
-      <p>testing</p>
-    </Dialog>
+    <StyledDialog
+      open={isOpen}
+      onDismiss={() => setIsOpen(false)}
+      variant="actionable"
+      title={`Register ${label}.eth`}
+    >
+      <CardDescription>
+        Registering an ENS name is a two step process. Between the steps there
+        is a 1 minute waiting period to protect your transaction from getting
+        front-run.
+      </CardDescription>
+
+      <TxSummary
+        label={label}
+        recipient={{ display: recipientDisplayName, avatar: recipientAvatar }}
+      />
+
+      <RegistrationSteps
+        label={label}
+        recipient={recipientAddress}
+        duration={duration}
+        step={step}
+        setStep={setStep}
+      />
+    </StyledDialog>
   )
 }
+
+const StyledDialog = styled(Dialog)(
+  ({ theme }) => css`
+    width: 100%;
+
+    ${mq.sm.min(css`
+      max-width: ${theme.space['112']};
+    `)}
+
+    & > div > div {
+      width: 100%;
+    }
+  `
+)

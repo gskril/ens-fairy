@@ -2,6 +2,10 @@ export function yearsToSeconds(years?: number) {
   return (years || 1) * 365 * 24 * 60 * 60
 }
 
+export const shortenAddress = (address: string) => {
+  return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
+}
+
 /**
  * Parses a string of years and returns a string of seconds
  * @param duration string of years to register for e.g. '1 year'

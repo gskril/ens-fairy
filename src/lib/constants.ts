@@ -6,12 +6,13 @@ export const REGISTRATION_GAS_AMOUNT = 300000
 
 export const TOTAL_GAS_AMOUNT = REGISTRATION_GAS_AMOUNT + COMMIT_GAS_AMOUNT
 
-export const ensRegistrarAddr =
+export const ethRegistrarControllerAddr =
   '0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5' as `0x${string}`
+
 export const ensBaseRegistrarAddr =
   '0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85' as `0x${string}`
 
-export const ensRegistrarAbi = [
+export const ethRegistrarControllerAbi = [
   {
     constant: true,
     inputs: [],
@@ -438,13 +439,10 @@ export const ensBaseRegistrarAbi = [
 
 export const ensFairyVault = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
 
-export const ensResolver = '0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41'
-export const ensResolverRinkeby = '0xf6305c19e814d2a75429Fd637d01F7ee0E77d615'
-
-export function getRegistrar() {
+export function getEthRegistrarController() {
   return {
-    address: ensRegistrarAddr,
-    abi: ensRegistrarAbi,
+    address: ethRegistrarControllerAddr,
+    abi: ethRegistrarControllerAbi,
   }
 }
 

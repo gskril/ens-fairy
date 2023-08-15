@@ -1,4 +1,4 @@
-import { mq } from '@ensdomains/thorin'
+import { Typography, mq } from '@ensdomains/thorin'
 import styled, { css } from 'styled-components'
 
 export const Layout = styled.div(
@@ -33,5 +33,22 @@ export const Container = styled.div(
     margin-left: auto;
     margin-right: auto;
     max-width: ${theme.space['128']};
+  `
+)
+
+export const CardDescription = styled(Typography).attrs({
+  asProp: 'p',
+  color: 'grey',
+})(
+  ({ theme }) => css`
+    line-height: 1.4;
+    text-align: center;
+
+    code {
+      font-size: 0.9375rem;
+      letter-spacing: -0.0625rem;
+      padding: 0.0625rem 0.25rem;
+      background-color: ${theme.colors.greySurface};
+    }
   `
 )

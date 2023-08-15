@@ -13,7 +13,7 @@ import { Layout } from '../components/atoms'
 import Registration from '../components/registration-modal'
 import useDebounce from '../hooks/useDebounce'
 import { useIsMounted } from '../hooks/useIsMounted'
-import { getRegistrar } from '../lib/constants'
+import { getEthRegistrarController } from '../lib/constants'
 
 export default function Home() {
   const { chain } = useNetwork()
@@ -30,7 +30,7 @@ export default function Home() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [durationToRegister, setDurationToRegister] = useState(1)
-  const registrarController = getRegistrar()
+  const registrarController = getEthRegistrarController()
 
   // If the debounced recipient input might be an ENS name, try to resolve it
   const { data: recipientEnsAddress, isLoading: isRecipientEnsAddressLoading } =

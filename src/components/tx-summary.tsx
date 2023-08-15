@@ -3,22 +3,30 @@ import Image from 'next/image'
 
 import { formatUsd } from '../lib/utils'
 
-export default function Details({ estimate, name, recipient, ...props }) {
+type Props = {
+  label: string
+  recipient: {
+    display: string
+    avatar: string | null | undefined
+  }
+}
+
+export default function TxSummary({ label, recipient, ...props }: Props) {
   return (
     <>
       <div className="details" {...props}>
         <div className="detail">
           <span className="key">Name</span>
-          <span className="value">{name}.eth</span>
+          <span className="value">{label}.eth</span>
         </div>
         <div className="detail">
           <span className="key">Recipient</span>
           <div className="value">
-            {recipient?.name}
+            {recipient?.display}
             {recipient?.avatar && (
               <div className="image-wrapper">
                 <Image
-                  src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`}
+                  src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.display}`}
                   alt=""
                   width={36}
                   height={36}
@@ -27,10 +35,6 @@ export default function Details({ estimate, name, recipient, ...props }) {
             )}
           </div>
         </div>
-        <div className="detail">
-          <span className="key">Estimated Cost</span>
-          <span className="value">{formatUsd(estimate)}</span>
-        </div>
       </div>
 
       <style jsx>{`
@@ -38,7 +42,6 @@ export default function Details({ estimate, name, recipient, ...props }) {
           display: flex;
           flex-direction: column;
           gap: ${theme.space[3]};
-          padding-bottom: ${theme.space[6]};
         }
 
         .detail {
@@ -47,16 +50,15 @@ export default function Details({ estimate, name, recipient, ...props }) {
           align-items: center;
           min-height: ${theme.space[14]};
           justify-content: space-between;
-          font-size: ${theme.fontSizes.base};
+          font-size: ${theme.fontSizes.body};
           border-radius: ${theme.radii.extraLarge};
           padding: ${theme.space[3]} ${theme.space[4]};
-          border: ${theme.borderWidths['0.375']} solid
-            ${theme.colors.borderSecondary};
+          border: ${theme.borderWidths['0.375']} solid ${theme.colors.border};
         }
 
         .key {
           color: ${theme.colors.textSecondary};
-          font-weight: ${theme.fontWeights.medium};
+          font-weight: ${theme.fontWeights.normal};
         }
 
         .value {
@@ -65,7 +67,7 @@ export default function Details({ estimate, name, recipient, ...props }) {
           align-items: center;
           gap: ${theme.space[3]};
           color: ${theme.colors.textPrimary};
-          font-weight: ${theme.fontWeights.semiBold};
+          font-weight: ${theme.fontWeights.bold};
         }
 
         .image-wrapper {

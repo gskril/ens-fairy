@@ -1,7 +1,7 @@
 import { formatEther } from 'viem'
 import { useContractRead, useNetwork } from 'wagmi'
 
-import { TOTAL_GAS_AMOUNT, getRegistrar } from '../lib/constants'
+import { TOTAL_GAS_AMOUNT, getEthRegistrarController } from '../lib/constants'
 import { parseDuration, parseName } from '../utils'
 import { useFetch } from './useFetch'
 
@@ -35,7 +35,7 @@ export const usePrice = ({
 
   const name = parseName(_name)
   const seconds = parseDuration(duration)
-  const ensRegistrarConfig = getRegistrar()
+  const ensRegistrarConfig = getEthRegistrarController()
 
   const { data: rentPrice, isError: isRentPriceError } = useContractRead({
     ...ensRegistrarConfig,
