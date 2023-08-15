@@ -29,25 +29,25 @@ export default function ConnectButtonWrapper() {
 
   return (
     <ConnectButton.Custom>
-      {({ account, chain, openConnectModal, mounted }) => {
+      {({ account, chain, openConnectModal, openChainModal, mounted }) => {
         return !account || !mounted || !chain ? (
-          <div>
-            <WiderButton shape="rounded" onClick={() => openConnectModal()}>
-              Connect Wallet
-            </WiderButton>
-          </div>
+          <WiderButton shape="rounded" onClick={() => openConnectModal()}>
+            Connect Wallet
+          </WiderButton>
         ) : chain.unsupported ? (
-          <ConnectButton />
+          <WiderButton
+            shape="rounded"
+            onClick={() => openChainModal()}
+            colorStyle="redPrimary"
+          >
+            Wrong Network
+          </WiderButton>
         ) : (
           <Profile
             address={account.address}
             ensName={account.ensName}
             avatar={account.ensAvatar}
             dropdownItems={[
-              {
-                label: `Balance: ${account.displayBalance}`,
-                disabled: true,
-              },
               {
                 label: 'Copy Address',
                 onClick: async () => {

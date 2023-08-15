@@ -10,11 +10,14 @@ import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
 
 import { Nav } from '../components/Nav'
 import { Layout } from '../components/atoms'
+import Registration from '../components/registration-modal'
 import useDebounce from '../hooks/useDebounce'
+import { useIsMounted } from '../hooks/useIsMounted'
 import { getRegistrar } from '../lib/constants'
 
 export default function Home() {
   const { chain } = useNetwork()
+  const isMounted = useIsMounted()
   const { address: isConnected } = useAccount()
   const { openConnectModal } = useConnectModal()
 
@@ -36,10 +39,10 @@ export default function Home() {
     })
 
   // Handle address or ENS input as recipient
-  const recipientAddress = recipientEnsAddress
-    ? recipientEnsAddress
-    : isAddress(recipientInput)
+  const recipientAddress = isAddress(recipientInput)
     ? recipientInput
+    : recipientEnsAddress
+    ? recipientEnsAddress
     : undefined
 
   // Normalize input and return label to register (without ".eth")
@@ -76,6 +79,8 @@ export default function Home() {
     args: !!nameToRegister() ? [nameToRegister()!] : undefined,
   })
 
+  const isInvalidDuration = !/[1-9]/.test(durationToRegister.toString())
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
@@ -83,6 +88,8 @@ export default function Home() {
       openConnectModal?.()
       return
     }
+
+    setDialogOpen(true)
   }
 
   return (
@@ -150,8 +157,15 @@ export default function Home() {
                   } as any
                 }
                 error={
-                  recipientAddress === undefined && !!recipientInput
+                  !!recipientInput &&
+                  !isRecipientEnsAddressLoading &&
+                  recipientAddress === undefined
                     ? 'Invalid address'
+                    : undefined
+                }
+                description={
+                  recipientAddress && recipientInput.includes('.')
+                    ? recipientAddress
                     : undefined
                 }
                 onChange={(e) => setRecipientInput(e.target.value)}
@@ -161,26 +175,24 @@ export default function Home() {
                 label="Duration"
                 placeholder="1 year"
                 inputMode="numeric"
-                error={
-                  !/[1-9]/.test(durationToRegister.toString())
-                    ? 'Invalid number'
-                    : undefined
-                }
+                error={isInvalidDuration ? 'Invalid number' : undefined}
                 suffix={durationToRegister > 1 ? 'years' : 'year'}
                 onChange={(e) => setDurationToRegister(Number(e.target.value))}
               />
             </div>
 
-            {!isConnected ? (
+            {!isConnected || !isMounted ? (
               <Button type="submit">Connect Wallet</Button>
             ) : (
               <Button
                 type="submit"
+                colorStyle="accentGradient"
                 loading={isAvailableLoading}
                 disabled={
                   !nameToRegister() ||
                   !recipientAddress ||
-                  isAvailable === false
+                  isAvailable === false ||
+                  isInvalidDuration
                 }
                 suffix={chain?.id === 5 ? <span>({chain?.name})</span> : <></>}
               >
@@ -198,6 +210,14 @@ export default function Home() {
           </a>
         </Link>
       </Layout>
+
+      <Registration
+        open={dialogOpen}
+        setIsOpen={setDialogOpen}
+        label={nameToRegister()}
+        recipient={recipientAddress}
+        duration={durationToRegister}
+      />
 
       <Toaster position="bottom-center" />
     </>
