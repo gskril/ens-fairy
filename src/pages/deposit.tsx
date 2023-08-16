@@ -133,11 +133,7 @@ export default function Depost() {
                     value: domain.labelhash,
                     label: domain.name,
                   }
-                }) || [
-                  {
-                    value: 'Loading',
-                  },
-                ]
+                }) || []
               }
               required
               tabIndex={2}
