@@ -4,6 +4,8 @@ import { usePlausible } from 'next-plausible'
 import { useEffect, useState } from 'react'
 import {
   Address,
+  useAccount,
+  useBalance,
   useContractRead,
   useContractWrite,
   useNetwork,
@@ -46,6 +48,7 @@ export function RegistrationSteps({
 }: Props) {
   const { chain } = useNetwork()
   const plausible = usePlausible()
+  const { address: connectedAddress } = useAccount()
   const publicResolver = getResolverAddress(chain?.id)
   const ethRegistarController = getEthRegistrarController()
   const [startCountdownTimestamp, setCountdownTimestamp] = useState(0)
@@ -92,7 +95,11 @@ export function RegistrationSteps({
     ...ethRegistarController,
     functionName: 'rentPrice',
     args: [label, BigInt(duration)],
-    enabled: step > Step.Waiting,
+    watch: step > Step.Waiting,
+  })
+
+  const { data: balance } = useBalance({
+    address: connectedAddress,
   })
 
   const prepareRegister = usePrepareContractWrite({
@@ -228,6 +235,15 @@ export function RegistrationSteps({
       </ul>
 
       {(() => {
+        // Check for insufficient balance
+        if (
+          balance &&
+          rentPrice &&
+          balance.value < BigInt(Number(rentPrice) * 1.05)
+        ) {
+          return <Button disabled>Insufficient Balance</Button>
+        }
+
         if (chain?.unsupported) {
           return <Button colorStyle="redPrimary">Unsupported Network</Button>
         }
