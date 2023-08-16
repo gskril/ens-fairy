@@ -9,7 +9,7 @@ import { useEnsAvatar, useEnsName } from 'wagmi'
 import { useIsMounted } from '../hooks/useIsMounted'
 import { shortenAddress } from '../utils'
 import { RegistrationSteps, Step } from './RegistrationSteps'
-import { CardDescription } from './atoms'
+import { CardDescription, StyledDialog } from './atoms'
 import TxSummary from './tx-summary'
 
 type RegistrationProps = {
@@ -103,17 +103,3 @@ export default function Registration({
     </>
   )
 }
-
-const StyledDialog = styled(Dialog)(
-  ({ theme }) => css`
-    width: 100%;
-
-    ${mq.sm.min(css`
-      max-width: ${theme.space['112']};
-    `)}
-
-    & > div > div {
-      width: 100% !important;
-    }
-  `
-)

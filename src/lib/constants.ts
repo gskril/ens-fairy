@@ -446,6 +446,13 @@ export function getEthRegistrarController() {
   }
 }
 
+export function getBaseRegistrar() {
+  return {
+    address: ensBaseRegistrarAddr,
+    abi: ensBaseRegistrarAbi,
+  }
+}
+
 export function getResolverAddress(chainId?: number) {
   return chainId === 5
     ? '0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329'

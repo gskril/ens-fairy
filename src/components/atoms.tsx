@@ -1,4 +1,4 @@
-import { Typography, mq } from '@ensdomains/thorin'
+import { Dialog, Typography, mq } from '@ensdomains/thorin'
 import styled, { css } from 'styled-components'
 
 export const Layout = styled.div(
@@ -49,6 +49,20 @@ export const CardDescription = styled(Typography).attrs({
       letter-spacing: -0.0625rem;
       padding: 0.0625rem 0.25rem;
       background-color: ${theme.colors.greySurface};
+    }
+  `
+)
+
+export const StyledDialog = styled(Dialog)(
+  ({ theme }) => css`
+    width: 100%;
+
+    ${mq.sm.min(css`
+      max-width: ${theme.space['112']};
+    `)}
+
+    & > div > div {
+      width: 100% !important;
     }
   `
 )
