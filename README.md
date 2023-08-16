@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js](https://nextjs.org/) project that uses [Thorin](https://thorin.ens.domains/) for styling and [Rainbowkit](https://www.rainbowkit.com/) for handling wallet connection.
 
 ## Getting Started
 
@@ -15,7 +15,3 @@ yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Learn More
-
-The app uses the [Thorin](https://github.com/ensdomains/ens-app-v3) design system, and [Rainbowkit](https://github.com/rainbow-me/rainbowkit) for handling wallet connection
