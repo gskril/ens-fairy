@@ -161,7 +161,7 @@ export default function Home() {
                   !!recipientInput &&
                   !isRecipientEnsAddressLoading &&
                   recipientAddress === undefined
-                    ? 'Invalid address'
+                    ? 'Invalid address/name'
                     : undefined
                 }
                 onChange={(e) => setRecipientInput(e.target.value)}
@@ -178,7 +178,9 @@ export default function Home() {
             </div>
 
             {!isConnected || !isMounted ? (
-              <Button type="submit">Connect Wallet</Button>
+              <Button type="submit" colorStyle="accentGradient">
+                Connect Wallet
+              </Button>
             ) : chain?.unsupported ? (
               <Button disabled>Unsupported Network</Button>
             ) : (
