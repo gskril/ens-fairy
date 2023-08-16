@@ -446,7 +446,7 @@ export function getEthRegistrarController() {
   }
 }
 
-export function getResolver(chainId?: number) {
+export function getResolverAddress(chainId?: number) {
   return chainId === 5
     ? '0x4B1488B7a6B320d2D721406204aBc3eeAa9AD329'
     : '0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41'

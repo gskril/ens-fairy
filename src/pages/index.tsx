@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { LoaderIcon, Toaster } from 'react-hot-toast'
+import styled from 'styled-components'
 import { isAddress } from 'viem'
 import { normalize } from 'viem/ens'
 import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
@@ -14,6 +15,7 @@ import Registration from '../components/registration-modal'
 import useDebounce from '../hooks/useDebounce'
 import { useIsMounted } from '../hooks/useIsMounted'
 import { getEthRegistrarController } from '../lib/constants'
+import { shortenAddress } from '../utils'
 
 export default function Home() {
   const { chain } = useNetwork()
@@ -113,7 +115,7 @@ export default function Home() {
       <Layout>
         <Nav />
 
-        <div>
+        <div style={{ maxWidth: '100%' }}>
           <Heading
             as="h1"
             level="1"
@@ -154,6 +156,7 @@ export default function Home() {
                 parentStyles={
                   {
                     width: '20rem',
+                    maxWidth: '100%',
                   } as any
                 }
                 error={
@@ -163,17 +166,12 @@ export default function Home() {
                     ? 'Invalid address'
                     : undefined
                 }
-                description={
-                  recipientAddress && recipientInput.includes('.')
-                    ? recipientAddress
-                    : undefined
-                }
                 onChange={(e) => setRecipientInput(e.target.value)}
               />
 
               <Input
                 label="Duration"
-                placeholder="1 year"
+                placeholder="1"
                 inputMode="numeric"
                 error={isInvalidDuration ? 'Invalid number' : undefined}
                 suffix={durationToRegister > 1 ? 'years' : 'year'}
@@ -183,6 +181,8 @@ export default function Home() {
 
             {!isConnected || !isMounted ? (
               <Button type="submit">Connect Wallet</Button>
+            ) : chain?.unsupported ? (
+              <Button disabled>Unsupported Network</Button>
             ) : (
               <Button
                 type="submit"
@@ -219,7 +219,7 @@ export default function Home() {
         duration={durationToRegister}
       />
 
-      <Toaster position="bottom-center" />
+      <Toaster position={dialogOpen ? 'top-center' : 'bottom-center'} />
     </>
   )
 }

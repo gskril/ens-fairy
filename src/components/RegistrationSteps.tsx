@@ -1,7 +1,16 @@
-import { CountdownCircle, Skeleton, Spinner } from '@ensdomains/thorin'
-import { useNetwork } from 'wagmi'
+import { Button, CountdownCircle, Skeleton, Spinner } from '@ensdomains/thorin'
+import { randomBytes } from 'crypto'
+import { useEffect, useState } from 'react'
+import {
+  Address,
+  useContractRead,
+  useContractWrite,
+  useNetwork,
+  usePrepareContractWrite,
+  useWaitForTransaction,
+} from 'wagmi'
 
-import { getEthRegistrarController, getResolver } from '../lib/constants'
+import { getEthRegistrarController, getResolverAddress } from '../lib/constants'
 
 export enum Step {
   Idle = 0,
@@ -15,7 +24,7 @@ export enum Step {
 
 type Props = {
   label: string
-  recipient: string
+  recipient: Address
   duration: number
   step: Step
   setStep: (step: Step) => void
@@ -30,27 +39,110 @@ const skeletonSharedStyled = {
 export function RegistrationSteps({
   label,
   recipient,
-  duration,
+  duration: durationYears,
   step,
   setStep,
 }: Props) {
   const { chain } = useNetwork()
-  const resolver = getResolver(chain?.id)
+  const publicResolver = getResolverAddress(chain?.id)
   const ethRegistarController = getEthRegistrarController()
+  const [startCountdownTimestamp, setCountdownTimestamp] = useState(0)
+  const duration = durationYears * 365 * 24 * 60 * 60
+
+  // Secret with ENSIP-14 prefix
+  const [secret] = useState(
+    ('0x03acfad5' + randomBytes(28).toString('hex')) as Address
+  )
+
+  const { data: commitment } = useContractRead({
+    ...ethRegistarController,
+    functionName: 'makeCommitmentWithConfig',
+    args: [
+      label, // name
+      recipient, // owner
+      secret, // secret
+      publicResolver, // resolver
+      recipient, // address
+    ],
+  })
+
+  const prepareCommit = usePrepareContractWrite({
+    ...ethRegistarController,
+    functionName: 'commit',
+    args: commitment ? [commitment] : undefined,
+    enabled: !!commitment,
+  })
+
+  const makeCommit = useContractWrite(prepareCommit?.config)
+  const watchCommit = useWaitForTransaction({
+    hash: makeCommit.data?.hash,
+    onSuccess: () => {
+      setCountdownTimestamp(Date.now())
+
+      // After 60 seconds, move to next step
+      setTimeout(() => {
+        setStep(Step.Waited)
+      }, 60 * 1000)
+    },
+  })
+
+  const { data: rentPrice } = useContractRead({
+    ...ethRegistarController,
+    functionName: 'rentPrice',
+    args: [label, BigInt(duration)],
+    enabled: step > Step.Waiting,
+  })
+
+  const prepareRegister = usePrepareContractWrite({
+    ...ethRegistarController,
+    functionName: 'registerWithConfig',
+    args: [
+      label, // name
+      recipient, // owner
+      BigInt(duration), // duration
+      secret, // secret
+      publicResolver, // resolver
+      recipient, // address
+    ],
+    value: rentPrice
+      ? BigInt((Number(rentPrice) * 1.05).toFixed(0))
+      : BigInt(0),
+    enabled: step === Step.Waited && !!rentPrice,
+  })
+
+  const makeRegister = useContractWrite(prepareRegister?.config)
+  const watchRegister = useWaitForTransaction(makeRegister.data)
+
+  // Step manager
+  useEffect(() => {
+    if (watchRegister.isSuccess) {
+      setStep(Step.Registered)
+    } else if (makeRegister.data) {
+      setStep(Step.Registering)
+    } else if (step === Step.Waited) {
+      // handled by the `onSuccess` callback of `watchCommit`
+      // should probs move that logic here
+    } else if (watchCommit.isSuccess) {
+      setStep(Step.Waiting)
+    } else if (makeCommit.data) {
+      setStep(Step.Committing)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [makeCommit, watchCommit, makeRegister, watchRegister])
 
   return (
     <div>
       <ul className="steps">
         <li className="step">
           <Skeleton
-            loading={step === 0}
+            loading={step < 1}
             style={{
               ...skeletonSharedStyled,
-              backgroundColor: step === 0 ? 'transparent' : 'rgba(0,0,0,0.15)',
+              backgroundColor: step > 0 ? 'transparent' : 'rgba(0,0,0,0.15)',
             }}
           >
-            {step === 1 ? (
-              <Spinner color="accent" />
+            {step < 2 ? (
+              <Spinner size="medium" color="accent" />
             ) : (
               <svg
                 width="24"
@@ -68,29 +160,32 @@ export function RegistrationSteps({
           </Skeleton>
           Commit
         </li>
+
         <li className="step">
           <CountdownCircle
             countdownSeconds={60}
-            disabled={step !== 3}
+            disabled={step < Step.Waiting}
+            startTimestamp={startCountdownTimestamp}
             style={{
               marginTop: '-0.35rem',
               marginBottom: '-0.35rem',
               transform: 'scale(0.8)',
-              filter: step === 3 ? 'grayscale(0%)' : 'grayscale(100%)',
+              filter: step > 2 ? 'grayscale(0%)' : 'grayscale(100%)',
             }}
           />
         </li>
+
         <li className="step">
           <Skeleton
-            loading={step < 5}
+            loading={step < Step.Registering}
             style={{
               ...skeletonSharedStyled,
-              backgroundColor: step === 5 ? 'rgba(0,0,0,0.15)' : 'transparent',
+              backgroundColor: step < 5 ? 'rgba(0,0,0,0.15)' : 'transparent',
             }}
           >
-            {step === 5 ? (
-              <Spinner color="accent" />
-            ) : step === 6 ? (
+            {step === Step.Registering ? (
+              <Spinner size="medium" color="accent" />
+            ) : step === Step.Registered ? (
               // Name registered successfully
               <svg
                 width="24"
@@ -124,6 +219,69 @@ export function RegistrationSteps({
         </li>
       </ul>
 
+      {(() => {
+        if (chain?.unsupported) {
+          return <Button colorStyle="redPrimary">Unsupported Network</Button>
+        }
+
+        if (watchCommit.isError || watchRegister.isError) {
+          return <Button colorStyle="redPrimary">Transaction Failed</Button>
+        }
+
+        if (prepareCommit.isError || prepareRegister.isError) {
+          return (
+            <Button colorStyle="redPrimary">Error Preparing Transaction</Button>
+          )
+        }
+
+        if (step === Step.Idle) {
+          return (
+            <Button
+              disabled={!makeCommit.write}
+              loading={makeCommit.isLoading}
+              onClick={() => makeCommit.write?.()}
+            >
+              Get Started
+            </Button>
+          )
+        }
+
+        const processingSteps = [1, 5]
+        if (processingSteps.includes(step)) {
+          return <Button disabled>Processing</Button>
+        }
+
+        const waitingSteps = [2, 3]
+        if (waitingSteps.includes(step)) {
+          return <Button disabled>Waiting</Button>
+        }
+
+        if (step === Step.Waited) {
+          return (
+            <Button
+              disabled={!makeRegister.write}
+              loading={makeRegister.isLoading}
+              onClick={() => makeRegister.write?.()}
+            >
+              Register
+            </Button>
+          )
+        }
+
+        if (step === Step.Registered) {
+          return (
+            <Button
+              colorStyle="greenPrimary"
+              as="a"
+              target="_blank"
+              href={`https://app.ens.domains/${label}.eth`}
+            >
+              View in ENS Manager
+            </Button>
+          )
+        }
+      })()}
+
       <style jsx>{`
         .steps {
           display: flex;
@@ -131,6 +289,7 @@ export function RegistrationSteps({
           justify-content: space-between;
           margin: 0 auto;
           max-width: 23rem;
+          margin-bottom: 1rem;
           gap: 0.75rem;
         }
 

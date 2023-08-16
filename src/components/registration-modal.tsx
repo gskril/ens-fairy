@@ -1,5 +1,8 @@
 import { Dialog, mq } from '@ensdomains/thorin'
 import { useState } from 'react'
+import Confetti from 'react-confetti'
+import toast from 'react-hot-toast'
+import { useWindowSize } from 'react-use'
 import styled, { css } from 'styled-components'
 import { useEnsAvatar, useEnsName } from 'wagmi'
 
@@ -26,6 +29,7 @@ export default function Registration({
 }: RegistrationProps) {
   const isMounted = useIsMounted()
   const [step, setStep] = useState<Step>(0)
+  const { width: windowWidth, height: windowHeight } = useWindowSize()
 
   const { data: recipientEnsName } = useEnsName({
     address: isOpen ? recipientAddress : undefined,
@@ -39,35 +43,64 @@ export default function Registration({
 
   if (!isMounted || !label || !recipientAddress || !duration) return null
 
-  // prettier-ignore
-  const recipientDisplayName = recipientEnsName || shortenAddress(recipientAddress)
-
   return (
-    <StyledDialog
-      open={isOpen}
-      onDismiss={() => setIsOpen(false)}
-      variant="actionable"
-      title={`Register ${label}.eth`}
-    >
-      <CardDescription>
-        Registering an ENS name is a two step process. Between the steps there
-        is a 1 minute waiting period to protect your transaction from getting
-        front-run.
-      </CardDescription>
+    <>
+      {step === Step.Registered && (
+        <Confetti
+          width={windowWidth}
+          height={windowHeight}
+          colors={['#44BCFO', '#7298F8', '#A099FF', '#DE82FF', '#7F6AFF']}
+          style={{ position: 'absolute', top: 0, left: 0, zIndex: '1000' }}
+        />
+      )}
 
-      <TxSummary
-        label={label}
-        recipient={{ display: recipientDisplayName, avatar: recipientAvatar }}
-      />
+      <StyledDialog
+        open={isOpen}
+        onDismiss={() => {
+          if (step === 0 || step === 6) {
+            setIsOpen(false)
+          } else {
+            toast('Keep the dialog open during registration')
+          }
+        }}
+        variant="actionable"
+        title={
+          step < Step.Registered
+            ? `Register ${label}.eth`
+            : `Registered ${label}.eth`
+        }
+      >
+        {step < Step.Registered ? (
+          <CardDescription>
+            Registering an ENS name is a two step process. Between the steps
+            there is a 1 minute waiting period to protect your transaction from
+            getting front-run.
+          </CardDescription>
+        ) : (
+          <CardDescription>
+            Name resolution is already setup, meaning you can do things like
+            send assets to the name immediately.
+          </CardDescription>
+        )}
 
-      <RegistrationSteps
-        label={label}
-        recipient={recipientAddress}
-        duration={duration}
-        step={step}
-        setStep={setStep}
-      />
-    </StyledDialog>
+        <TxSummary
+          label={label}
+          recipient={{
+            address: recipientAddress,
+            name: recipientEnsName || undefined,
+            avatar: recipientAvatar,
+          }}
+        />
+
+        <RegistrationSteps
+          label={label}
+          recipient={recipientAddress}
+          duration={duration}
+          step={step}
+          setStep={setStep}
+        />
+      </StyledDialog>
+    </>
   )
 }
 
@@ -80,7 +113,7 @@ const StyledDialog = styled(Dialog)(
     `)}
 
     & > div > div {
-      width: 100%;
+      width: 100% !important;
     }
   `
 )

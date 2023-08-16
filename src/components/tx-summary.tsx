@@ -1,12 +1,13 @@
 import { lightTheme as theme } from '@ensdomains/thorin'
 import Image from 'next/image'
 
-import { formatUsd } from '../lib/utils'
+import { shortenAddress } from '../utils'
 
 type Props = {
   label: string
   recipient: {
-    display: string
+    address: string
+    name: string | undefined
     avatar: string | null | undefined
   }
 }
@@ -22,11 +23,19 @@ export default function TxSummary({ label, recipient, ...props }: Props) {
         <div className="detail">
           <span className="key">Recipient</span>
           <div className="value">
-            {recipient?.display}
+            <a
+              className="address-wrapper"
+              href={`https://etherscan.io/address/${recipient.address}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {recipient.name && <span>{recipient.name}</span>}
+              <span>{shortenAddress(recipient.address)}</span>
+            </a>
             {recipient?.avatar && (
               <div className="image-wrapper">
                 <Image
-                  src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.display}`}
+                  src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`}
                   alt=""
                   width={36}
                   height={36}
@@ -68,6 +77,18 @@ export default function TxSummary({ label, recipient, ...props }: Props) {
           gap: ${theme.space[3]};
           color: ${theme.colors.textPrimary};
           font-weight: ${theme.fontWeights.bold};
+        }
+
+        .address-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+        }
+
+        .address-wrapper span:nth-child(2) {
+          color: ${theme.colors.textSecondary};
+          font-weight: ${theme.fontWeights.normal};
+          font-size: ${theme.fontSizes.extraSmall};
         }
 
         .image-wrapper {
