@@ -1,5 +1,6 @@
 import { Button, CountdownCircle, Skeleton, Spinner } from '@ensdomains/thorin'
 import { randomBytes } from 'crypto'
+import { usePlausible } from 'next-plausible'
 import { useEffect, useState } from 'react'
 import {
   Address,
@@ -44,6 +45,7 @@ export function RegistrationSteps({
   setStep,
 }: Props) {
   const { chain } = useNetwork()
+  const plausible = usePlausible()
   const publicResolver = getResolverAddress(chain?.id)
   const ethRegistarController = getEthRegistrarController()
   const [startCountdownTimestamp, setCountdownTimestamp] = useState(0)
@@ -117,6 +119,12 @@ export function RegistrationSteps({
   useEffect(() => {
     if (watchRegister.isSuccess) {
       setStep(Step.Registered)
+      plausible('Name Registration', {
+        props: {
+          name: `${label}.eth`,
+          network: chain?.name,
+        },
+      })
     } else if (makeRegister.data) {
       setStep(Step.Registering)
     } else if (step === Step.Waited) {
