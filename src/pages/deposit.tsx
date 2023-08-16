@@ -13,7 +13,8 @@ import {
   useWaitForTransaction,
 } from 'wagmi'
 
-import { StyledDialog } from '../components/atoms'
+import { Nav } from '../components/Nav'
+import { Layout, StyledDialog } from '../components/atoms'
 import Header from '../components/header'
 import { Domain, useEnsNames } from '../hooks/useEnsNames'
 import { getBaseRegistrar, ensFairyVault } from '../lib/constants'
@@ -90,7 +91,6 @@ export default function Depost() {
         />
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
-      <Header position="absolute" />
 
       {nameTransferred && (
         <Confetti
@@ -101,68 +101,82 @@ export default function Depost() {
         />
       )}
 
-      <div className="container container--flex">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!connectedAddress) {
-              toast.error('Connect your wallet')
-              return
-            } else if (!selectedNft) {
-              toast.error('Select an ENS name from the dropdown')
-              return
-            }
+      <Layout>
+        <Nav />
 
-            // Transfer the selected name to the ENS Fairy Vault
-            transferName.write()
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            maxWidth: '100%',
           }}
         >
-          <StyledSelect
-            options={
-              domains?.map((domain) => {
-                return {
-                  value: domain.labelhash,
-                  label: domain.name,
-                }
-              }) || [
-                {
-                  value: 'Loading',
-                },
-              ]
-            }
-            required
-            tabIndex={2}
-            disabled={processing}
-            placeholder="Select a name to transfer"
-            label="Select a name to deposit"
-            onChange={(e) => {
-              const selectedNft = domains?.find(
-                (domain) => domain.labelhash === e.target.value
-              )
-              setSelectedNft(selectedNft)
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!connectedAddress) {
+                toast.error('Connect your wallet')
+                return
+              } else if (!selectedNft) {
+                toast.error('Select an ENS name from the dropdown')
+                return
+              }
+
+              // Transfer the selected name to the ENS Fairy Vault
+              transferName.write()
             }}
-          />
-          <div className="button-wrapper">
-            <Button
-              type="submit"
-              loading={processing}
-              colorStyle="accentGradient"
-              disabled={processing}
-            >
-              Send to the vault
-            </Button>
-          </div>
-        </form>
-        <div className="what-is-this">
-          <Typography
-            asProp="p"
-            color="textTertiary"
-            onClick={() => setDialogOpen(true)}
           >
-            What is this?
-          </Typography>
+            <StyledSelect
+              options={
+                domains?.map((domain) => {
+                  return {
+                    value: domain.labelhash,
+                    label: domain.name,
+                  }
+                }) || [
+                  {
+                    value: 'Loading',
+                  },
+                ]
+              }
+              required
+              tabIndex={2}
+              disabled={processing}
+              placeholder="Select a name to transfer"
+              label="Select a name to deposit"
+              onChange={(e) => {
+                const selectedNft = domains?.find(
+                  (domain) => domain.labelhash === e.target.value
+                )
+                setSelectedNft(selectedNft)
+              }}
+            />
+            <div className="button-wrapper">
+              <Button
+                type="submit"
+                loading={processing}
+                colorStyle="accentGradient"
+                disabled={processing}
+              >
+                Send to the vault
+              </Button>
+            </div>
+          </form>
+          <div className="what-is-this">
+            <Typography
+              asProp="p"
+              color="textTertiary"
+              onClick={() => setDialogOpen(true)}
+            >
+              What is this?
+            </Typography>
+          </div>
         </div>
-      </div>
+
+        <footer />
+      </Layout>
+
       <StyledDialog
         open={dialogOpen}
         variant="actionable"
