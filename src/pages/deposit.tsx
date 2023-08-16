@@ -15,7 +15,6 @@ import {
 
 import { Nav } from '../components/Nav'
 import { Layout, StyledDialog } from '../components/atoms'
-import Header from '../components/header'
 import { Domain, useEnsNames } from '../hooks/useEnsNames'
 import { getBaseRegistrar, ensFairyVault } from '../lib/constants'
 

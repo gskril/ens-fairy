@@ -1,4 +1,4 @@
-import { Button, mq } from '@ensdomains/thorin'
+import { mq } from '@ensdomains/thorin'
 import Link from 'next/link'
 import styled, { css } from 'styled-components'
 

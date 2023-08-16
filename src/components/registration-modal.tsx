@@ -1,13 +1,10 @@
-import { Dialog, mq } from '@ensdomains/thorin'
 import { useState } from 'react'
 import Confetti from 'react-confetti'
 import toast from 'react-hot-toast'
 import { useWindowSize } from 'react-use'
-import styled, { css } from 'styled-components'
 import { useEnsAvatar, useEnsName } from 'wagmi'
 
 import { useIsMounted } from '../hooks/useIsMounted'
-import { shortenAddress } from '../utils'
 import { RegistrationSteps, Step } from './RegistrationSteps'
 import { CardDescription, StyledDialog } from './atoms'
 import TxSummary from './tx-summary'

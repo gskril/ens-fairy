@@ -4,7 +4,6 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { LoaderIcon, Toaster } from 'react-hot-toast'
-import styled from 'styled-components'
 import { isAddress } from 'viem'
 import { normalize } from 'viem/ens'
 import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
@@ -15,7 +14,6 @@ import Registration from '../components/registration-modal'
 import useDebounce from '../hooks/useDebounce'
 import { useIsMounted } from '../hooks/useIsMounted'
 import { getEthRegistrarController } from '../lib/constants'
-import { shortenAddress } from '../utils'
 
 export default function Home() {
   const { chain } = useNetwork()
