@@ -82,6 +82,7 @@ export default function Registration({
 
         <TxSummary
           label={label}
+          duration={duration}
           recipient={{
             address: recipientAddress,
             name: recipientEnsName || undefined,

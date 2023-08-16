@@ -5,6 +5,7 @@ import { shortenAddress } from '../utils'
 
 type Props = {
   label: string
+  duration: number
   recipient: {
     address: string
     name: string | undefined
@@ -12,13 +13,24 @@ type Props = {
   }
 }
 
-export default function TxSummary({ label, recipient, ...props }: Props) {
+export default function TxSummary({
+  label,
+  duration,
+  recipient,
+  ...props
+}: Props) {
   return (
     <>
       <div className="details" {...props}>
         <div className="detail">
           <span className="key">Name</span>
           <span className="value">{label}.eth</span>
+        </div>
+        <div className="detail">
+          <span className="key">Duration</span>
+          <span className="value">
+            {duration} {duration > 1 ? 'years' : 'year'}
+          </span>
         </div>
         <div className="detail">
           <span className="key">Recipient</span>
@@ -32,10 +44,14 @@ export default function TxSummary({ label, recipient, ...props }: Props) {
               {recipient.name && <span>{recipient.name}</span>}
               <span>{shortenAddress(recipient.address)}</span>
             </a>
-            {recipient?.avatar && (
+            {recipient.name && (
               <div className="image-wrapper">
                 <Image
-                  src={`http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`}
+                  src={
+                    recipient.avatar
+                      ? `http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`
+                      : '/img/av-default.png'
+                  }
                   alt=""
                   width={36}
                   height={36}
