@@ -239,7 +239,7 @@ export function RegistrationSteps({
         if (
           balance &&
           rentPrice &&
-          balance.value < BigInt(Number(rentPrice) * 1.05)
+          balance.value < BigInt((Number(rentPrice) * 1.05).toFixed(0))
         ) {
           return <Button disabled>Insufficient Balance</Button>
         }
