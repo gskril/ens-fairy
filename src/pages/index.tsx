@@ -1,15 +1,16 @@
-import { Button, Heading, Input, Typography } from '@ensdomains/thorin'
+import { Button, Heading, Input, Typography, mq } from '@ensdomains/thorin'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import Head from 'next/head'
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { LoaderIcon, Toaster } from 'react-hot-toast'
+import styled, { css } from 'styled-components'
 import { isAddress } from 'viem'
 import { normalize } from 'viem/ens'
 import { useAccount, useContractRead, useEnsAddress, useNetwork } from 'wagmi'
 
 import { Nav } from '../components/Nav'
-import { Layout } from '../components/atoms'
+import { Container, Layout } from '../components/atoms'
 import Registration from '../components/registration-modal'
 import useDebounce from '../hooks/useDebounce'
 import { useIsMounted } from '../hooks/useIsMounted'
@@ -113,18 +114,11 @@ export default function Home() {
       <Layout>
         <Nav />
 
-        <div style={{ maxWidth: '100%' }}>
-          <Heading
-            as="h1"
-            level="1"
-            align="center"
-            style={{ marginBottom: '2rem', lineHeight: '1' }}
-          >
-            Gift an ENS name
-          </Heading>
+        <Container style={{ paddingBottom: '1rem' }}>
+          <Title as="h1">Gift an ENS Name</Title>
 
           <form className="form" onSubmit={handleSubmit}>
-            <div className="col">
+            <InputWrapper>
               <Input
                 label="Name"
                 placeholder="gregskril"
@@ -151,12 +145,6 @@ export default function Home() {
                 }
                 spellCheck="false"
                 autoCapitalize="none"
-                parentStyles={
-                  {
-                    width: '20rem',
-                    maxWidth: '100%',
-                  } as any
-                }
                 error={
                   !!recipientInput &&
                   !isRecipientEnsAddressLoading &&
@@ -175,7 +163,7 @@ export default function Home() {
                 suffix={durationToRegister > 1 ? 'years' : 'year'}
                 onChange={(e) => setDurationToRegister(Number(e.target.value))}
               />
-            </div>
+            </InputWrapper>
 
             {!isConnected || !isMounted ? (
               <Button type="submit" colorStyle="accentGradient">
@@ -200,7 +188,7 @@ export default function Home() {
               </Button>
             )}
           </form>
-        </div>
+        </Container>
 
         <Link href="/deposit">
           <a>
@@ -223,3 +211,27 @@ export default function Home() {
     </>
   )
 }
+
+const Title = styled(Heading)(
+  ({ theme }) => css`
+    text-align: center;
+    margin-bottom: ${theme.space['3']};
+    font-size: ${theme.fontSizes.headingTwo};
+    font-weight: ${theme.fontWeights.bold};
+
+    ${mq.sm.min(css`
+      font-size: 3rem;
+    `)}
+  `
+)
+
+const InputWrapper = styled.div(
+  ({ theme }) => css`
+    gap: ${theme.space['4']};
+    display: grid;
+
+    ${mq.sm.min(css`
+      grid-template-columns: 3fr 4fr 2fr;
+    `)}
+  `
+)

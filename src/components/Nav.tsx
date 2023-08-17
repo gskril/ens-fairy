@@ -4,7 +4,7 @@ import styled, { css } from 'styled-components'
 
 import { Columns } from './atoms'
 import ConnectButtonWrapper from './connect-button'
-import { EnsLogo, EnsLogoShort } from './icons'
+import { EnsFairyLogo, EnsLogoShort } from './icons'
 
 const ShortLogoWrapper = styled.div`
   display: flex;
@@ -36,7 +36,7 @@ export function Nav() {
           </ShortLogoWrapper>
 
           <FullLogoWrapper>
-            <EnsLogo />
+            <EnsFairyLogo />
           </FullLogoWrapper>
         </a>
       </Link>

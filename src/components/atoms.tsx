@@ -32,7 +32,8 @@ export const Container = styled.div(
   ({ theme }) => css`
     margin-left: auto;
     margin-right: auto;
-    max-width: ${theme.space['128']};
+    width: 100%;
+    max-width: ${theme.space['192']};
   `
 )
 
