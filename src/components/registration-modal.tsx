@@ -69,9 +69,8 @@ export default function Registration({
       >
         {step < Step.Registered ? (
           <CardDescription>
-            Registering an ENS name is a two step process. Between the steps
-            there is a 1 minute waiting period to protect your transaction from
-            getting front-run.
+            Registration is a two step process with a one minute waiting period
+            for front-running protection.
           </CardDescription>
         ) : (
           <CardDescription>
