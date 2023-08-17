@@ -1,57 +1,46 @@
-import Head from 'next/head'
-import Confetti from 'react-confetti'
-import Header from '../components/header'
-import { useEffect, useState } from 'react'
+import { Button, Select, Typography } from '@ensdomains/thorin'
 import { usePlausible } from 'next-plausible'
+import Head from 'next/head'
+import { useState } from 'react'
+import Confetti from 'react-confetti'
 import toast, { Toaster } from 'react-hot-toast'
 import useWindowSize from 'react-use/lib/useWindowSize'
-import { Button, Dialog, Select, Typography } from '@ensdomains/thorin'
-import { useAccount, useContractWrite, useWaitForTransaction } from 'wagmi'
+import styled from 'styled-components'
 import {
-  ensBaseRegistrarAddr,
-  ensBaseRegistrarAbi,
-  ensFairyVault,
-} from '../lib/constants'
+  useAccount,
+  useContractWrite,
+  useNetwork,
+  useWaitForTransaction,
+} from 'wagmi'
+
+import { Nav } from '../components/Nav'
+import { Layout, StyledDialog } from '../components/atoms'
+import { Domain, useEnsNames } from '../hooks/useEnsNames'
+import { getBaseRegistrar, ensFairyVault } from '../lib/constants'
 
 export default function Depost() {
   const plausible = usePlausible()
+  const { chain } = useNetwork()
   const { address: connectedAddress } = useAccount()
   const { width: windowWidth, height: windowHeight } = useWindowSize()
 
-  const [nfts, setNfts] = useState([])
-  const [selectedNft, setSelectedNft] = useState()
+  const { data: domains } = useEnsNames(connectedAddress, chain?.id)
+  const [selectedNft, setSelectedNft] = useState<Domain | undefined>()
   const [nameTransferred, setNameTransferred] = useState(false)
-
-  // Get NFTs from OpenSea
-  useEffect(() => {
-    const fetchNfts = async () => {
-      const opensea = await fetch(`
-        https://api.opensea.io/api/v1/assets?owner=${connectedAddress}&collection=ens&limit=50
-      `)
-      const nfts = await opensea.json()
-      setNfts(
-        nfts.assets.map((nft) => {
-          return {
-            label: nft.name,
-            value: nft.token_id,
-          }
-        })
-      )
-    }
-    if (connectedAddress) fetchNfts()
-  }, [connectedAddress])
+  const baseRegistrar = getBaseRegistrar()
 
   // Call `transferFrom` on the ENS contract
   const transferName = useContractWrite({
-    addressOrName: ensBaseRegistrarAddr,
-    contractInterface: ensBaseRegistrarAbi,
+    ...baseRegistrar,
     functionName: 'transferFrom',
-    chainId: 1,
-    args: [
-      connectedAddress, // address from
-      ensFairyVault, // address to
-      selectedNft?.value, // token id
-    ],
+    args:
+      connectedAddress && selectedNft
+        ? [
+            connectedAddress, // address from
+            ensFairyVault, // address to
+            BigInt(selectedNft.labelhash), // token id
+          ]
+        : undefined,
     onError: (err) => {
       if (err.message.includes('cannot estimate gas')) {
         toast.error('Unable to send transaction')
@@ -64,9 +53,8 @@ export default function Depost() {
   // Wait for the transaction to be mined
   const { isLoading: processing } = useWaitForTransaction({
     hash: transferName.data?.hash,
-    chainId: 1,
     onSuccess: (data) => {
-      const didFail = data.status === 0
+      const didFail = data.status === 'reverted'
       if (didFail) {
         toast.error('Transaction failed')
       } else {
@@ -76,7 +64,7 @@ export default function Depost() {
         // Plausible Analytics
         plausible('Name Transfer', {
           props: {
-            name: selectedNft?.label,
+            name: selectedNft?.name,
           },
         })
       }
@@ -102,7 +90,6 @@ export default function Depost() {
         />
         <meta property="og:image" content="https://ensfairy.xyz/sharing.png" />
       </Head>
-      <Header position="absolute" />
 
       {nameTransferred && (
         <Confetti
@@ -113,65 +100,85 @@ export default function Depost() {
         />
       )}
 
-      <div className="container container--flex">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!connectedAddress) {
-              toast.error('Connect your wallet')
-              return
-            } else if (!selectedNft) {
-              toast.error('Select an ENS name from the dropdown')
-              return
-            }
+      <Layout>
+        <Nav />
 
-            // Transfer the selected name to the ENS Fairy Vault
-            transferName.write()
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            maxWidth: '100%',
           }}
         >
-          <Select
-            options={nfts}
-            required
-            tabIndex={2}
-            disabled={processing}
-            label="Select a name to deposit"
-            onChange={(e) => {
-              const selectedNft = nfts.find(
-                (nft) => nft.value === e.target.value
-              )
-              setSelectedNft(selectedNft)
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!connectedAddress) {
+                toast.error('Connect your wallet')
+                return
+              } else if (!selectedNft) {
+                toast.error('Select an ENS name from the dropdown')
+                return
+              }
+
+              // Transfer the selected name to the ENS Fairy Vault
+              transferName.write()
             }}
-          />
-          <div className="button-wrapper">
-            <Button
-              type="submit"
-              variant="action"
-              loading={processing}
-              disabled={processing}
-            >
-              Send to the vault
-            </Button>
-          </div>
-        </form>
-        <div className="what-is-this">
-          <Typography
-            as="p"
-            size="base"
-            weight="semiBold"
-            color="textTertiary"
-            onClick={() => setDialogOpen(true)}
           >
-            What is this?
-          </Typography>
+            <StyledSelect
+              options={
+                domains?.map((domain) => {
+                  return {
+                    value: domain.labelhash,
+                    label: domain.name,
+                  }
+                }) || []
+              }
+              required
+              tabIndex={2}
+              disabled={processing}
+              placeholder="Select a name to transfer"
+              label="Select a name to deposit"
+              onChange={(e) => {
+                const selectedNft = domains?.find(
+                  (domain) => domain.labelhash === e.target.value
+                )
+                setSelectedNft(selectedNft)
+              }}
+            />
+            <div className="button-wrapper">
+              <Button
+                type="submit"
+                loading={processing}
+                colorStyle="accentGradient"
+                disabled={processing}
+              >
+                Send to the vault
+              </Button>
+            </div>
+          </form>
+          <div className="what-is-this">
+            <Typography
+              asProp="p"
+              color="textTertiary"
+              onClick={() => setDialogOpen(true)}
+            >
+              What is this?
+            </Typography>
+          </div>
         </div>
-      </div>
-      <Dialog
+
+        <footer />
+      </Layout>
+
+      <StyledDialog
         open={dialogOpen}
+        variant="actionable"
         title="What is The Vault?"
-        className="modal"
         onDismiss={() => setDialogOpen(false)}
       >
-        <Typography size="base">
+        <Typography style={{ fontWeight: '400', lineHeight: 1.4 }}>
           <p>
             The ENS Fairy Vault is a wallet that can hold ENS names for
             individuals, organizations, and companies until they create an
@@ -203,7 +210,7 @@ export default function Depost() {
             (founder and lead developer of ENS).
           </p>
         </Typography>
-      </Dialog>
+      </StyledDialog>
 
       <Toaster position="bottom-center" />
 
@@ -220,14 +227,14 @@ export default function Depost() {
         .what-is-this:hover {
           cursor: pointer;
         }
-
-        @media screen and (min-width: 29em) {
-          .button-wrapper {
-            transform: scale(1.25);
-            margin: 2rem 2rem;
-          }
-        }
       `}</style>
     </>
   )
 }
+
+const StyledSelect = styled(Select)`
+  & > div:last-child {
+    max-height: 20rem;
+    overflow: scroll;
+  }
+`

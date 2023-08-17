@@ -1,7 +1,18 @@
-import toast from 'react-hot-toast'
-import { useDisconnect } from 'wagmi'
-import { Button, Profile } from '@ensdomains/thorin'
+import { Button, Profile, mq } from '@ensdomains/thorin'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
+import styled, { css } from 'styled-components'
+import { useDisconnect } from 'wagmi'
+
+const WiderButton = styled(Button)(
+  ({ theme }) => css`
+    max-width: ${theme.space['32']};
+
+    ${mq.xs.min(css`
+      max-width: ${theme.space['45']};
+    `)}
+  `
+)
 
 export default function ConnectButtonWrapper() {
   const { disconnect } = useDisconnect()
@@ -18,23 +29,25 @@ export default function ConnectButtonWrapper() {
 
   return (
     <ConnectButton.Custom>
-      {({ account, chain, openConnectModal, mounted }) => {
+      {({ account, chain, openConnectModal, openChainModal, mounted }) => {
         return !account || !mounted || !chain ? (
-          <div>
-            <Button onClick={() => openConnectModal()}>Connect Wallet</Button>
-          </div>
+          <WiderButton shape="rounded" onClick={() => openConnectModal()}>
+            Connect Wallet
+          </WiderButton>
         ) : chain.unsupported ? (
-          <ConnectButton />
+          <WiderButton
+            shape="rounded"
+            onClick={() => openChainModal()}
+            colorStyle="redPrimary"
+          >
+            Wrong Network
+          </WiderButton>
         ) : (
           <Profile
             address={account.address}
             ensName={account.ensName}
             avatar={account.ensAvatar}
             dropdownItems={[
-              {
-                label: `Balance: ${account.displayBalance}`,
-                disabled: true,
-              },
               {
                 label: 'Copy Address',
                 onClick: async () => {
