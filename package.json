@@ -11,6 +11,7 @@
   "dependencies": {
     "@ensdomains/thorin": "^0.6.41",
     "@rainbow-me/rainbowkit": "^1.0.8",
+    "keen-slider": "^6.8.6",
     "next": "12.2.0",
     "next-plausible": "^3.2.0",
     "next-pwa": "^5.6.0",
