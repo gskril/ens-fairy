@@ -8,7 +8,7 @@ const getEndpoint = (chainId?: number) => {
   }
 }
 
-export type Domain = {
+type Domain = {
   id: string
   labelName: string
   labelhash: string
@@ -18,26 +18,50 @@ export type Domain = {
   }
 }
 
+type WrappedDomain = Omit<Domain, 'labelName' | 'labelhash'>
+
 type GraphResponse = {
   data: {
     domains: Array<Domain>
+    wrappedDomains: Array<WrappedDomain>
   }
 }
 
+export type NormalizeDomain = WrappedDomain & {
+  tokenId: bigint
+  wrapped: boolean
+}
+
 export function useEnsNames(address: string | undefined, chainId?: number) {
+  const currentUnixTime = Math.floor(Date.now() / 1000)
+
   // TODO: add support for wrapped names (would need to handle ERC1155 tokens)
   const query = `
     {
       domains(
         first: 100
         where: { 
-          owner: "${address?.toLowerCase()}"
+          registrant: "${address?.toLowerCase()}"
           labelName_not: null
+          expiryDate_gt: ${currentUnixTime}
         }
       ) {
         id
         labelName
         labelhash
+        name
+        owner {
+          id
+        }
+      }
+
+      wrappedDomains(
+        first: 100
+        where: { 
+          owner: "${address?.toLowerCase()}"
+        }
+      ) {
+        id
         name
         owner {
           id
@@ -58,8 +82,26 @@ export function useEnsNames(address: string | undefined, chainId?: number) {
     }
   )
 
+  const normalizedDomains: NormalizeDomain[] | undefined =
+    response.data?.data.domains.map((domain) => ({
+      id: domain.id,
+      tokenId: BigInt(domain.labelhash),
+      name: domain.name,
+      owner: { ...domain.owner },
+      wrapped: false,
+    }))
+
+  const normalizedWrappedDomains: NormalizeDomain[] | undefined =
+    response.data?.data.wrappedDomains.map((domain) => ({
+      ...domain,
+      tokenId: BigInt(domain.id),
+      wrapped: true,
+    }))
+
+  const allDomains = normalizedDomains?.concat(normalizedWrappedDomains || [])
+
   return {
-    data: response.data?.data.domains,
+    data: allDomains,
     error: response.error,
     isLoading: address && !response.data && !response.error,
   }

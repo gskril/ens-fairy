@@ -1,3 +1,5 @@
+import { Address } from 'viem'
+
 export const SECONDS_PER_YEAR = 31556952
 
 export const COMMIT_GAS_AMOUNT = 48000
@@ -450,6 +452,29 @@ export function getBaseRegistrar() {
   return {
     address: ensBaseRegistrarAddr,
     abi: ensBaseRegistrarAbi,
+  }
+}
+
+export function getNameWrapper(chainId?: number) {
+  return {
+    address: (chainId === 5
+      ? '0x114D4603199df73e7D157787f8778E21fCd13066'
+      : '0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401') as Address,
+    abi: [
+      {
+        inputs: [
+          { internalType: 'address', name: 'from', type: 'address' },
+          { internalType: 'address', name: 'to', type: 'address' },
+          { internalType: 'uint256', name: 'id', type: 'uint256' },
+          { internalType: 'uint256', name: 'amount', type: 'uint256' },
+          { internalType: 'bytes', name: 'data', type: 'bytes' },
+        ],
+        name: 'safeTransferFrom',
+        outputs: [],
+        stateMutability: 'nonpayable',
+        type: 'function',
+      },
+    ] as const,
   }
 }
 

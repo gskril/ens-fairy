@@ -15,8 +15,12 @@ import {
 
 import { Nav } from '../components/Nav'
 import { Layout, StyledDialog } from '../components/atoms'
-import { Domain, useEnsNames } from '../hooks/useEnsNames'
-import { getBaseRegistrar, ensFairyVault } from '../lib/constants'
+import { NormalizeDomain, useEnsNames } from '../hooks/useEnsNames'
+import {
+  getBaseRegistrar,
+  ensFairyVault,
+  getNameWrapper,
+} from '../lib/constants'
 
 export default function Depost() {
   const plausible = usePlausible()
@@ -25,21 +29,34 @@ export default function Depost() {
   const { width: windowWidth, height: windowHeight } = useWindowSize()
 
   const { data: domains } = useEnsNames(connectedAddress, chain?.id)
-  const [selectedNft, setSelectedNft] = useState<Domain | undefined>()
+  const [selectedNft, setSelectedNft] = useState<NormalizeDomain | undefined>()
   const [nameTransferred, setNameTransferred] = useState(false)
   const baseRegistrar = getBaseRegistrar()
+  const nameWrapper = getNameWrapper(chain?.id)
 
-  // Call `transferFrom` on the ENS contract
   const transferName = useContractWrite({
-    ...baseRegistrar,
-    functionName: 'transferFrom',
+    address: selectedNft?.wrapped ? nameWrapper.address : baseRegistrar.address,
+    // @ts-ignore
+    abi: selectedNft?.wrapped ? nameWrapper.abi : baseRegistrar.abi,
+    functionName: 'safeTransferFrom',
+    // @ts-ignore
     args:
       connectedAddress && selectedNft
-        ? [
-            connectedAddress, // address from
-            ensFairyVault, // address to
-            BigInt(selectedNft.labelhash), // token id
-          ]
+        ? selectedNft.wrapped === false
+          ? // Unwrapped domains, transfer on the base registrar
+            [
+              connectedAddress, // address from
+              ensFairyVault, // address to
+              selectedNft.tokenId, // token id
+            ]
+          : // Wrapped domains, transfer on the Name Wrapper
+            [
+              connectedAddress, // address from
+              ensFairyVault, // address to
+              BigInt(selectedNft.tokenId), // token id
+              1, // amount,
+              '0x', // data
+            ]
         : undefined,
     onError: (err) => {
       if (err.message.includes('cannot estimate gas')) {
@@ -130,7 +147,7 @@ export default function Depost() {
               options={
                 domains?.map((domain) => {
                   return {
-                    value: domain.labelhash,
+                    value: domain.tokenId.toString(),
                     label: domain.name,
                   }
                 }) || []
@@ -142,7 +159,7 @@ export default function Depost() {
               label="Select a name to deposit"
               onChange={(e) => {
                 const selectedNft = domains?.find(
-                  (domain) => domain.labelhash === e.target.value
+                  (domain) => domain.tokenId.toString() === e.target.value
                 )
                 setSelectedNft(selectedNft)
               }}
