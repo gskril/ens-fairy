@@ -10,11 +10,10 @@ module.exports = withPWA(
       disable: process.env.NODE_ENV === 'development',
       skipWaiting: true,
     },
-  },
-  withPlausibleProxy()({
     images: {
-      domains: ['metadata.ens.domains'],
+      domains: ['metadata.ens.domains', 'i.imgur.com', 'imgur.com'],
     },
     reactStrictMode: true,
-  })
+  },
+  withPlausibleProxy()
 )
