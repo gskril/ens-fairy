@@ -46,7 +46,8 @@ export default function TxSummary({
             </a>
             {recipient.name && (
               <div className="image-wrapper">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={
                     recipient.avatar
                       ? `http://metadata.ens.domains/mainnet/avatar/${recipient?.name}`
