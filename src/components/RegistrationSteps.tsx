@@ -126,12 +126,6 @@ export function RegistrationSteps({
   useEffect(() => {
     if (watchRegister.isSuccess) {
       setStep(Step.Registered)
-      plausible('Name Registration', {
-        props: {
-          name: `${label}.eth`,
-          network: chain?.name,
-        },
-      })
     } else if (makeRegister.data) {
       setStep(Step.Registering)
     } else if (step === Step.Waited) {

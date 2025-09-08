@@ -77,13 +77,6 @@ export default function Depost() {
       } else {
         toast.success('Name transferred successfully!')
         setNameTransferred(true)
-
-        // Plausible Analytics
-        plausible('Name Transfer', {
-          props: {
-            name: selectedNft?.name,
-          },
-        })
       }
     },
   })
