@@ -1,0 +1,416 @@
+import { randomSecret } from '@ensdomains/ensjs/utils'
+import { commitName, registerName } from '@ensdomains/ensjs/wallet'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  type Account,
+  type Address,
+  type Client,
+  type Hash,
+  type Hex,
+  type Transport,
+  erc20Abi,
+} from 'viem'
+import {
+  getConnectorClient,
+  getPublicClient,
+  readContract,
+  simulateContract,
+  waitForTransactionReceipt,
+  writeContract,
+} from 'wagmi/actions'
+
+import {
+  type EnsChain,
+  PAYMENT_TOKENS,
+  type PaymentToken,
+  deployRecipientResolver,
+  dryRunGift,
+  formatTokenAmount,
+  getDeployedResolver,
+  getErrorMessage,
+  getGiftPrice,
+  getPaymentTokenAddress,
+  getRegisterWriteParameters,
+  getRegistrarAddress,
+  getRevertError,
+  randomSalt,
+  yearsToSeconds,
+} from '../lib/gift'
+import { type SupportedChainId, config } from '../lib/wagmi'
+
+export type GiftParams = {
+  chainId: SupportedChainId
+  label: string
+  recipient: Address
+  years: number
+  token: PaymentToken
+}
+
+export type StepId = 'resolver' | 'approve' | 'commit' | 'wait' | 'register'
+export type Phase = 'idle' | StepId | 'done'
+export type TxStatus = 'sign' | 'confirm'
+
+export type GiftState = {
+  phase: Phase
+  txStatus?: TxStatus
+  error?: string
+  /** Unix ms timestamp for when the commitment can be revealed */
+  readyAt?: number
+  /** True once the wait is over and the register tx can be sent */
+  ready?: boolean
+  approvalSkipped?: boolean
+  /** True while the gift is being simulated before any transactions */
+  checking?: boolean
+  hashes: Partial<Record<StepId, Hash>>
+}
+
+/** Saved between page loads so a refresh mid-flow doesn't waste the commit */
+type Draft = {
+  secret: Hex
+  salt: string
+  resolver?: Address
+  commitHash?: Hash
+}
+
+const STEP_ORDER: Phase[] = [
+  'idle',
+  'resolver',
+  'approve',
+  'commit',
+  'wait',
+  'register',
+  'done',
+]
+
+export function stepStatus(state: GiftState, step: StepId) {
+  const current = STEP_ORDER.indexOf(state.phase)
+  const index = STEP_ORDER.indexOf(step)
+  if (step === 'approve' && state.approvalSkipped && current > index) {
+    return 'skipped'
+  }
+  if (current > index) return 'done'
+  if (current === index) return state.error ? 'error' : 'active'
+  return 'pending'
+}
+
+function draftKey({ chainId, label, recipient, years }: GiftParams) {
+  return `ens-fairy:gift:${chainId}:${label}:${recipient.toLowerCase()}:${years}`
+}
+
+function loadDraft(params: GiftParams): Draft | undefined {
+  try {
+    const raw = localStorage.getItem(draftKey(params))
+    return raw ? (JSON.parse(raw) as Draft) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function saveDraft(params: GiftParams, draft: Draft | undefined) {
+  try {
+    if (draft) localStorage.setItem(draftKey(params), JSON.stringify(draft))
+    else localStorage.removeItem(draftKey(params))
+  } catch {
+    // Storage can be unavailable (private mode). The flow still works.
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export function useGiftFlow(params: GiftParams | undefined) {
+  const [state, setState] = useState<GiftState>({ phase: 'idle', hashes: {} })
+  const running = useRef(false)
+  const mounted = useRef(true)
+
+  const update = useCallback((next: Partial<GiftState>) => {
+    if (mounted.current) setState((prev) => ({ ...prev, ...next }))
+  }, [])
+
+  const setHash = useCallback((step: StepId, hash: Hash) => {
+    if (mounted.current) {
+      setState((prev) => ({
+        ...prev,
+        hashes: { ...prev.hashes, [step]: hash },
+      }))
+    }
+  }, [])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  const getDraft = useCallback(() => {
+    if (!params) throw new Error('Missing gift details')
+    let draft = loadDraft(params)
+    if (!draft) {
+      draft = { secret: randomSecret(), salt: randomSalt().toString() }
+      saveDraft(params, draft)
+    }
+    return draft
+  }, [params])
+
+  const getClients = useCallback(async () => {
+    if (!params) throw new Error('Missing gift details')
+    const wallet = (await getConnectorClient(config, {
+      chainId: params.chainId,
+    })) as Client<Transport, EnsChain, Account>
+    const client = getPublicClient(config, { chainId: params.chainId })
+    return { wallet, client }
+  }, [params])
+
+  const registrationParams = useCallback(
+    (draft: Draft) => {
+      if (!params || !draft.resolver) throw new Error('Missing resolver')
+      return {
+        label: params.label,
+        owner: params.recipient,
+        duration: yearsToSeconds(params.years),
+        secret: draft.secret,
+        resolverAddress: draft.resolver,
+      }
+    },
+    [params]
+  )
+
+  /** Polls until the registrar accepts the commitment. */
+  const waitUntilReady = useCallback(
+    async (draft: Draft) => {
+      if (!params) return
+      const { wallet } = await getClients()
+      update({ phase: 'wait', txStatus: undefined, error: undefined })
+
+      const register = getRegisterWriteParameters(wallet, {
+        ...registrationParams(draft),
+        paymentToken: getPaymentTokenAddress(wallet.chain, params.token),
+      })
+
+      while (mounted.current) {
+        try {
+          await simulateContract(config, {
+            address: register.address,
+            abi: register.abi,
+            functionName: register.functionName,
+            args: register.args,
+            chainId: params.chainId,
+            account: wallet.account.address,
+          })
+          update({ ready: true, readyAt: Date.now() })
+          return
+        } catch (err) {
+          const revert = getRevertError(err)
+
+          if (revert?.name === 'CommitmentTooNew') {
+            const [, validFrom, blockTimestamp] = revert.args as [
+              Hex,
+              bigint,
+              bigint,
+            ]
+            const waitMs = Number(validFrom - blockTimestamp) * 1000 + 1500
+            update({ readyAt: Date.now() + waitMs })
+            await sleep(Math.max(waitMs, 3000))
+            continue
+          }
+
+          if (revert?.name === 'CommitmentTooOld') {
+            saveDraft(params, undefined)
+          }
+
+          throw err
+        }
+      }
+    },
+    [getClients, params, registrationParams, update]
+  )
+
+  /** Runs every step up to the waiting period, resuming saved progress. */
+  const start = useCallback(async () => {
+    if (!params || running.current) return
+    running.current = true
+    update({ error: undefined })
+
+    try {
+      const { wallet, client } = await getClients()
+      const account = wallet.account.address
+      const name = `${params.label}.eth`
+      const token = getPaymentTokenAddress(wallet.chain, params.token)
+      const registrar = getRegistrarAddress(wallet.chain)
+      const draft = getDraft()
+
+      const price = await getGiftPrice(client, params)
+      const balance = await readContract(config, {
+        chainId: params.chainId,
+        address: token,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [account],
+      })
+
+      if (balance < price.total) {
+        const { symbol } = PAYMENT_TOKENS[params.token]
+        throw new Error(
+          `You need ${formatTokenAmount(price.total, params.token)} ${symbol} to register this name`
+        )
+      }
+
+      // Simulate the whole gift first so nobody pays gas for a doomed attempt
+      if (!draft.resolver) {
+        update({ checking: true })
+        let failure: unknown
+        try {
+          failure = await dryRunGift(client, {
+            ...params,
+            account,
+            secret: draft.secret,
+            salt: BigInt(draft.salt),
+          })
+        } catch (err) {
+          // Not every RPC supports eth_simulateV1. Carry on without it.
+          console.warn('Skipping gift simulation', err)
+        } finally {
+          update({ checking: false })
+        }
+        if (failure) throw failure
+      }
+
+      // 1. Deploy a resolver owned by the recipient, pointing the name at them
+      if (!draft.resolver) {
+        update({ phase: 'resolver', txStatus: 'sign' })
+        const hash = await deployRecipientResolver(wallet, {
+          name,
+          recipient: params.recipient,
+          salt: BigInt(draft.salt),
+        })
+        setHash('resolver', hash)
+        update({ txStatus: 'confirm' })
+        const receipt = await waitForTransactionReceipt(config, {
+          hash,
+          chainId: params.chainId,
+        })
+        if (receipt.status !== 'success') {
+          throw new Error('Resolver setup failed')
+        }
+        draft.resolver = getDeployedResolver(receipt, {
+          chain: wallet.chain,
+          sender: account,
+        })
+        saveDraft(params, draft)
+      }
+
+      // 2. Approve the registrar to take payment
+      update({ phase: 'approve', txStatus: undefined })
+      const allowance = await readContract(config, {
+        chainId: params.chainId,
+        address: token,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [account, registrar],
+      })
+
+      if (allowance < price.total) {
+        update({ txStatus: 'sign' })
+        const hash = await writeContract(config, {
+          chainId: params.chainId,
+          address: token,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [registrar, price.total],
+        })
+        setHash('approve', hash)
+        update({ txStatus: 'confirm' })
+        const receipt = await waitForTransactionReceipt(config, {
+          hash,
+          chainId: params.chainId,
+        })
+        if (receipt.status !== 'success') throw new Error('Approval failed')
+      } else {
+        update({ approvalSkipped: true })
+      }
+
+      // 3. Commit to the registration (front-running protection)
+      update({ phase: 'commit', txStatus: 'sign' })
+      if (!draft.commitHash) {
+        draft.commitHash = await commitName(wallet, registrationParams(draft))
+        saveDraft(params, draft)
+      }
+      setHash('commit', draft.commitHash)
+      update({ txStatus: 'confirm' })
+      const receipt = await waitForTransactionReceipt(config, {
+        hash: draft.commitHash,
+        chainId: params.chainId,
+      })
+      if (receipt.status !== 'success') {
+        draft.commitHash = undefined
+        saveDraft(params, draft)
+        throw new Error('Commit transaction failed')
+      }
+
+      // 4. Wait for the commitment to mature
+      await waitUntilReady(draft)
+    } catch (err) {
+      update({ error: getErrorMessage(err) })
+    } finally {
+      running.current = false
+    }
+  }, [
+    getClients,
+    getDraft,
+    params,
+    registrationParams,
+    setHash,
+    update,
+    waitUntilReady,
+  ])
+
+  /** 5. Reveal the commitment and pay for the name. */
+  const register = useCallback(async () => {
+    if (!params || running.current) return
+    running.current = true
+    update({ phase: 'register', txStatus: 'sign', error: undefined })
+
+    try {
+      const { wallet } = await getClients()
+      const draft = getDraft()
+      const hash = await registerName(wallet, {
+        ...registrationParams(draft),
+        paymentToken: getPaymentTokenAddress(wallet.chain, params.token),
+      })
+      setHash('register', hash)
+      update({ txStatus: 'confirm' })
+      const receipt = await waitForTransactionReceipt(config, {
+        hash,
+        chainId: params.chainId,
+      })
+      if (receipt.status !== 'success') {
+        throw new Error('Registration transaction failed')
+      }
+      saveDraft(params, undefined)
+      update({ phase: 'done', txStatus: undefined })
+    } catch (err) {
+      update({ error: getErrorMessage(err) })
+    } finally {
+      running.current = false
+    }
+  }, [getClients, getDraft, params, registrationParams, setHash, update])
+
+  // Resume a gift that was committed before the page was closed
+  useEffect(() => {
+    if (!params) return
+    const draft = loadDraft(params)
+    setState({
+      phase: draft?.commitHash ? 'wait' : 'idle',
+      hashes: draft?.commitHash ? { commit: draft.commitHash } : {},
+    })
+  }, [params])
+
+  const retry = useCallback(() => {
+    if (state.phase === 'register' || (state.phase === 'wait' && state.ready)) {
+      return register()
+    }
+    return start()
+  }, [register, start, state.phase, state.ready])
+
+  return { state, start, register, retry }
+}

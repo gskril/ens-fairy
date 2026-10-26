@@ -1,18 +1,12 @@
-// from https://usehooks-ts.com/react-hook/use-debounce
 import { useEffect, useState } from 'react'
 
-function useDebounce<T>(value: T, delay?: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+export function useDebounce<T>(value: T, delay = 400) {
+  const [debounced, setDebounced] = useState(value)
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay || 500)
-
-    return () => {
-      clearTimeout(timer)
-    }
+    const timeout = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timeout)
   }, [value, delay])
 
-  return debouncedValue
+  return debounced
 }
-
-export default useDebounce

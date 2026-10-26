@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ens-fairy",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/rpc/*"],
+  },
+  "observability": { "enabled": true },
+  // Optional secrets (`wrangler secret put <NAME>`) for private RPC endpoints:
+  //   MAINNET_RPC_URL, SEPOLIA_RPC_URL
+}
