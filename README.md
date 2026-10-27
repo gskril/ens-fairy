@@ -55,7 +55,7 @@ bun run deploy
 
 [`contracts/src/FairyResolver.sol`](contracts/src/FairyResolver.sol) is an optional shared resolver for gifted names. One deployment serves every name, so a gift doesn't deploy a resolver of its own (about 267k gas saved per gift on mainnet).
 
-- **Owner-controlled.** Only the name's current owner in the ENSv2 .eth registry, or an operator they approve, can write records. There's no admin and no upgrade path.
+- **Owner-controlled.** Only the name's current owner in the ENSv2 .eth registry, or an operator they've approved on that registry (the name NFT's `setApprovalForAll`), can write records. The resolver has no approval system of its own. There's no admin and no upgrade path.
 - **Resolves to the owner by default.** Until the owner sets one, the ETH address is the name's current owner, so a gifted name works the moment it's registered and follows the name if it's transferred.
 - **Records belong to a registration.** They're keyed by the registry's resource ID, which changes when a name is registered again, so if a name expires and someone else registers it they start clean. Transfers and renewals keep records.
 - **Editable in the ENS manager.** Setters take the DNS-encoded name (`setAddress(bytes,uint256,bytes)`, `setText`, `setContenthash`, `clearRecords`, `multicall`), which the manager detects and writes through.

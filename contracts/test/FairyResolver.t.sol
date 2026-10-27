@@ -129,16 +129,23 @@ contract FairyResolverTest is Test {
         resolver.setText(name, "url", "https://early.example");
     }
 
-    function test_approvedOperatorCanWrite() public {
+    function test_registryOperatorCanWrite() public {
         _gift(gifter, recipient);
+        assertFalse(resolver.canModifyName(name, operator));
 
         vm.prank(recipient);
-        resolver.setApprovalForAll(operator, true);
+        IERC1155(address(ETH_REGISTRY)).setApprovalForAll(operator, true);
 
         vm.prank(operator);
         resolver.setText(name, "com.github", "gskril");
         assertEq(_resolveText("com.github"), "gskril");
         assertTrue(resolver.canModifyName(name, operator));
+
+        vm.prank(recipient);
+        IERC1155(address(ETH_REGISTRY)).setApprovalForAll(operator, false);
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, operator));
+        resolver.setText(name, "com.github", "someone-else");
     }
 
     ////////////////////////////////////////////////////////////////////////

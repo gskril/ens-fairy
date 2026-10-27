@@ -18,7 +18,9 @@ import {ERC165} from "@openzeppelin/utils/introspection/ERC165.sol";
 ///
 /// One deployment serves every name, so a gift doesn't need to deploy or
 /// configure a resolver. Records can only be written by the name's current
-/// owner in the ENSv2 .eth registry, or an operator the owner approves.
+/// owner in the ENSv2 .eth registry, or an operator the owner has approved on
+/// the registry with `setApprovalForAll`. The resolver keeps no approvals of
+/// its own.
 ///
 /// Until the owner sets one, a name's ETH address resolves to its current
 /// owner. A gifted name therefore resolves to the recipient the moment it's
@@ -64,15 +66,6 @@ contract FairyResolver is ERC165, IExtendedResolver {
 
     mapping(bytes32 recordKey => bytes hash) private _contenthashes;
 
-    /// @notice Accounts an owner allows to manage records for all their names.
-    mapping(address owner => mapping(address operator => bool approved)) public isApprovedForAll;
-
-    ////////////////////////////////////////////////////////////////////////
-    // Events
-    ////////////////////////////////////////////////////////////////////////
-
-    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-
     ////////////////////////////////////////////////////////////////////////
     // Errors
     ////////////////////////////////////////////////////////////////////////
@@ -80,7 +73,7 @@ contract FairyResolver is ERC165, IExtendedResolver {
     /// @notice The name isn't a DNS-encoded second-level .eth name.
     error UnsupportedName(bytes name);
 
-    /// @notice The caller doesn't own the name and isn't an approved operator.
+    /// @notice The caller doesn't own the name and isn't approved on the registry.
     error Unauthorized(bytes name, address account);
 
     /// @notice EVM addresses must be empty or exactly 20 bytes.
@@ -88,8 +81,6 @@ contract FairyResolver is ERC165, IExtendedResolver {
 
     /// @notice `resolve` was asked for a profile this resolver doesn't serve.
     error UnsupportedResolverProfile(bytes4 selector);
-
-    error InvalidOperator();
 
     ////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -150,13 +141,6 @@ contract FairyResolver is ERC165, IExtendedResolver {
     function clearRecords(bytes calldata name) external {
         (bytes32 node, uint256 resource) = _authorize(name);
         emit IVersionableResolver.VersionChanged(node, ++recordVersions[resource]);
-    }
-
-    /// @notice Let `operator` manage records for every name the caller owns.
-    function setApprovalForAll(address operator, bool approved) external {
-        if (operator == msg.sender) revert InvalidOperator();
-        isApprovedForAll[msg.sender][operator] = approved;
-        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     /// @notice Run several writes in one transaction. Reverts with the first error.
@@ -220,23 +204,27 @@ contract FairyResolver is ERC165, IExtendedResolver {
     /// @param name The DNS-encoded name.
     function canModifyName(bytes calldata name, address account) external view returns (bool) {
         (, string memory label) = _parseName(name);
-        address owner = _owner(label);
-        return owner != address(0) && (account == owner || isApprovedForAll[owner][account]);
+        return _canModify(_owner(label), account);
     }
 
     ////////////////////////////////////////////////////////////////////////
     // Internal
     ////////////////////////////////////////////////////////////////////////
 
-    /// @dev Reverts unless the caller owns `name` or is an approved operator.
+    /// @dev Reverts unless the caller owns `name` or is approved on the registry.
     function _authorize(bytes calldata name) private view returns (bytes32 node, uint256 resource) {
         string memory label;
         (node, label) = _parseName(name);
-        address owner = _owner(label);
-        if (owner == address(0) || (msg.sender != owner && !isApprovedForAll[owner][msg.sender])) {
-            revert Unauthorized(name, msg.sender);
-        }
+        if (!_canModify(_owner(label), msg.sender)) revert Unauthorized(name, msg.sender);
         resource = _resource(label);
+    }
+
+    /// @dev The owner, or an operator the owner approved on the .eth registry,
+    ///      the same approval that lets it transfer the name.
+    function _canModify(address owner, address account) private view returns (bool) {
+        return
+            owner != address(0)
+                && (account == owner || ETH_REGISTRY.isApprovedForAll(owner, account));
     }
 
     /// @dev The explicit ETH address, or the owner's if none was ever set.
