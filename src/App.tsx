@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useConnection, useSwitchChain } from 'wagmi'
 import { cx, style } from 'zyzz'
@@ -14,6 +14,8 @@ import {
   type GiftParams,
   discardGift,
   findPendingGifts,
+  isSameGift,
+  subscribeToGifts,
 } from './hooks/useGiftFlow'
 import { useName } from './hooks/useName'
 import { useRecipient } from './hooks/useRecipient'
@@ -56,25 +58,25 @@ export function App() {
   }>()
   const [giftOpen, setGiftOpen] = useState(false)
 
-  // Gifts committed before a reload. Re-read whenever the dialog closes or
-  // one is dismissed.
-  const [dismissals, setDismissals] = useState(0)
+  // Committed gifts that can be resumed: ones from before a reload, or one
+  // still running after its dialog was closed. Re-read when saved gifts change.
+  const [giftsVersion, setGiftsVersion] = useState(0)
+  useEffect(() => subscribeToGifts(() => setGiftsVersion((n) => n + 1)), [])
   const pendingGifts = useMemo(
     () => (giftOpen ? [] : findPendingGifts(chainId)),
-    [chainId, giftOpen, dismissals]
+    [chainId, giftOpen, giftsVersion]
   )
-
-  function dismissGift(params: GiftParams) {
-    discardGift(params)
-    setDismissals((n) => n + 1)
-  }
 
   function resumeGift(params: GiftParams) {
     if (!isConnected) {
       setWalletModalOpen(true)
       return
     }
-    setGift({ params })
+    // Reopening the gift that's already loaded keeps its progress, e.g. a
+    // countdown that kept running after the dialog was closed
+    setGift((current) =>
+      current && isSameGift(current.params, params) ? current : { params }
+    )
     setGiftOpen(true)
   }
 
@@ -183,7 +185,7 @@ export function App() {
                   type="button"
                   aria-label={`Dismiss unfinished gift of ${pending.label}.eth`}
                   title="Dismiss"
-                  onClick={() => dismissGift(pending)}
+                  onClick={() => discardGift(pending)}
                   {...styles.dismiss()}
                 >
                   <CloseIcon size={12} />

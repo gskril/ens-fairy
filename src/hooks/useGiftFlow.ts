@@ -169,6 +169,8 @@ function loadDraft(params: GiftParams): Draft | undefined {
   }
 }
 
+const DRAFTS_CHANGED = 'ens-fairy:drafts-changed'
+
 function saveDraft(params: GiftParams, draft: Draft | undefined) {
   try {
     if (draft) localStorage.setItem(draftKey(params), JSON.stringify(draft))
@@ -176,6 +178,24 @@ function saveDraft(params: GiftParams, draft: Draft | undefined) {
   } catch {
     // Storage can be unavailable (private mode). The flow still works.
   }
+  window.dispatchEvent(new Event(DRAFTS_CHANGED))
+}
+
+/** Calls `onChange` whenever saved gifts change, in this tab or another. */
+export function subscribeToGifts(onChange: () => void) {
+  const onStorage = (e: StorageEvent) => {
+    if (!e.key || e.key.startsWith(DRAFT_PREFIX)) onChange()
+  }
+  window.addEventListener(DRAFTS_CHANGED, onChange)
+  window.addEventListener('storage', onStorage)
+  return () => {
+    window.removeEventListener(DRAFTS_CHANGED, onChange)
+    window.removeEventListener('storage', onStorage)
+  }
+}
+
+export function isSameGift(a: GiftParams, b: GiftParams) {
+  return draftKey(a) === draftKey(b)
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
