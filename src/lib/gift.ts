@@ -83,6 +83,7 @@ export type RegistrationParams = {
   duration: number
   secret: Hex
   resolverAddress: Address
+  referrer: Hex
   paymentToken: Address
 }
 
@@ -103,6 +104,7 @@ export type GiftSetup = {
   token: PaymentToken
   secret: Hex
   resolverAddress: Address
+  referrer: Hex
 }
 
 function asSender(client: Client<Transport, EnsChain>, account: Address) {
@@ -131,6 +133,7 @@ export function getGiftCalls(
     duration: yearsToSeconds(years),
     secret,
     resolverAddress: setup.resolverAddress,
+    referrer: setup.referrer,
   }
   const commit = commitNameWriteParameters(sender, registration)
   const register = registerNameWriteParameters(sender, {

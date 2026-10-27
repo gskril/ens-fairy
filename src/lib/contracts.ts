@@ -1,4 +1,4 @@
-import { type Address, isAddressEqual, zeroAddress } from 'viem'
+import { type Address, type Hex, isAddressEqual, pad, zeroAddress } from 'viem'
 
 /**
  * FairyResolver deployments (contracts/src/FairyResolver.sol), by chain ID.
@@ -14,3 +14,9 @@ export function getFairyResolver(chainId: number): Address | undefined {
   const address = FAIRY_RESOLVERS[chainId]
   return address && !isAddressEqual(address, zeroAddress) ? address : undefined
 }
+
+/** ensfairy.eth, credited as the referrer on every registration */
+const REFERRER_ADDRESS: Address = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
+
+/** The registrar takes the referrer as bytes32: the address left-padded */
+export const FAIRY_REFERRER: Hex = pad(REFERRER_ADDRESS, { size: 32 })

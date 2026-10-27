@@ -14,7 +14,7 @@ import { randomSecret } from '@ensdomains/ensjs/utils'
 import { type Address, createClient, http, zeroAddress } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 
-import { getFairyResolver } from '../src/lib/contracts'
+import { FAIRY_REFERRER, getFairyResolver } from '../src/lib/contracts'
 import { dryRunGift, getErrorMessage } from '../src/lib/gift'
 
 const isSepolia = process.argv[2] === 'sepolia'
@@ -39,6 +39,7 @@ const failure = await dryRunGift(client, {
   token: 'usdc',
   secret: randomSecret(),
   resolverAddress: getFairyResolver(chain.id) ?? zeroAddress,
+  referrer: FAIRY_REFERRER,
 })
 
 if (failure) {
