@@ -67,6 +67,8 @@ export type GiftState = {
   checking?: boolean
   /** True when approval and commit are sent as one wallet batch */
   batched?: boolean
+  /** True when a saved gift was loaded and should pick up where it left off */
+  resumable?: boolean
   hashes: Partial<Record<StepId, Hash>>
 }
 
@@ -374,7 +376,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
   const start = useCallback(async () => {
     if (!params || running.current) return
     running.current = true
-    update({ error: undefined })
+    update({ error: undefined, resumable: undefined })
 
     try {
       const { wallet, client } = await getClients()
@@ -570,6 +572,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     setState({
       phase: draft?.commitHash ? 'wait' : 'idle',
       batched: !!draft?.batchId || undefined,
+      resumable: !!(draft?.commitHash || draft?.batchId) || undefined,
       hashes: draft?.commitHash ? { commit: draft.commitHash } : {},
     })
   }, [params])
