@@ -39,6 +39,11 @@ export function GiftDialog({
   const { state, start, register, retry } = useGiftFlow(params)
   const isDone = state.phase === 'done'
 
+  // A saved gift picks up where it left off as soon as its dialog opens
+  useEffect(() => {
+    if (open && state.resumable) start()
+  }, [open, state.resumable, start])
+
   useEffect(() => {
     if (!isDone) return
     confetti({
@@ -288,7 +293,7 @@ function Action({
       if (state.ready) {
         return <Button onClick={onRegister}>Register {name}</Button>
       }
-      // Resumed after a reload: re-check the commit and keep going
+      // Fallback if resuming didn't start on its own: re-check the commit
       if (!state.readyAt && !state.txStatus) {
         return <Button onClick={onStart}>Continue</Button>
       }
