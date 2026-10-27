@@ -9,6 +9,8 @@ import {
   type Hex,
   type Transport,
   erc20Abi,
+  getAddress,
+  isAddress,
 } from 'viem'
 import {
   getCapabilities,
@@ -113,8 +115,44 @@ export function stepStatus(state: GiftState, step: StepId) {
   return 'pending'
 }
 
+const DRAFT_PREFIX = 'ens-fairy:gift:'
+
 function draftKey({ chainId, label, recipient, years, token }: GiftParams) {
-  return `ens-fairy:gift:${chainId}:${label}:${recipient.toLowerCase()}:${years}:${token}`
+  return `${DRAFT_PREFIX}${chainId}:${label}:${recipient.toLowerCase()}:${years}:${token}`
+}
+
+/**
+ * Gifts on `chainId` that were committed (or sent as a batch) in an earlier
+ * visit, so they can be resumed without re-entering the form. Read from the
+ * saved draft keys.
+ */
+export function findPendingGifts(chainId: number): GiftParams[] {
+  const gifts: GiftParams[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith(DRAFT_PREFIX)) continue
+      const parts = key.slice(DRAFT_PREFIX.length).split(':')
+      if (parts.length !== 5) continue
+      const [id, label, recipient, years, token] = parts
+      if (Number(id) !== chainId || !(token in PAYMENT_TOKENS)) continue
+      if (!isAddress(recipient)) continue
+
+      const draft = JSON.parse(localStorage.getItem(key) ?? 'null') as Draft
+      if (!draft?.commitHash && !draft?.batchId) continue
+
+      gifts.push({
+        chainId: chainId as SupportedChainId,
+        label,
+        recipient: getAddress(recipient),
+        years: Number(years),
+        token: token as PaymentToken,
+      })
+    }
+  } catch {
+    // Storage can be unavailable (private mode)
+  }
+  return gifts
 }
 
 function loadDraft(params: GiftParams): Draft | undefined {

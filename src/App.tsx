@@ -1,15 +1,16 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useConnection, useSwitchChain } from 'wagmi'
 import { cx, style } from 'zyzz'
 
+import { shortenAddress } from './components/Avatar'
 import { GiftDialog } from './components/GiftDialog'
 import { Nav } from './components/Nav'
 import { TestnetFaucet } from './components/TestnetFaucet'
 import { WalletModal } from './components/WalletModal'
 import { GithubIcon } from './components/icons'
 import { Button, Input, Spinner } from './components/ui'
-import type { GiftParams } from './hooks/useGiftFlow'
+import { type GiftParams, findPendingGifts } from './hooks/useGiftFlow'
 import { useName } from './hooks/useName'
 import { useRecipient } from './hooks/useRecipient'
 import { getFairyResolver } from './lib/contracts'
@@ -50,6 +51,21 @@ export function App() {
     price?: bigint
   }>()
   const [giftOpen, setGiftOpen] = useState(false)
+
+  // Gifts committed before a reload. Re-read whenever the dialog closes.
+  const pendingGifts = useMemo(
+    () => (giftOpen ? [] : findPendingGifts(chainId)),
+    [chainId, giftOpen]
+  )
+
+  function resumeGift(params: GiftParams) {
+    if (!isConnected) {
+      setWalletModalOpen(true)
+      return
+    }
+    setGift({ params })
+    setGiftOpen(true)
+  }
 
   const years = Number(yearsInput)
   const invalidYears =
@@ -131,6 +147,27 @@ export function App() {
             Register a .eth name to someone else's wallet.
           </p>
         </header>
+
+        {!paused &&
+          pendingGifts.map((pending) => (
+            <div
+              key={`${pending.label}:${pending.recipient}`}
+              {...styles.pending()}
+            >
+              <span>
+                Unfinished gift:{' '}
+                <span {...styles.pendingName()}>{pending.label}.eth</span> to{' '}
+                {shortenAddress(pending.recipient)}
+              </span>
+              <Button
+                size="small"
+                tone="secondary"
+                onClick={() => resumeGift(pending)}
+              >
+                Resume
+              </Button>
+            </div>
+          ))}
 
         {paused ? (
           <Maintenance
@@ -421,6 +458,25 @@ namespace styles {
   })
 
   export const available = style({ color: 'var(--green)' })
+
+  export const pending = style({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    padding: '0.75rem 0.75rem 0.75rem 1rem',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    backgroundColor: 'var(--surface)',
+    color: 'var(--text-secondary)',
+    fontWeight: 500,
+  })
+
+  export const pendingName = style({
+    color: 'var(--text)',
+    fontFamily: 'var(--font-mono)',
+    wordBreak: 'break-all',
+  })
 
   export const maintenance = style({
     alignItems: 'center',
