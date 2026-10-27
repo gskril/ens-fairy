@@ -23,9 +23,11 @@ export function useRecipient({
   const debounced = useDebounce(input.trim())
   const client = useEnsClient(chainId)
 
-  const isAddressInput = isAddress(debounced, { strict: false })
+  // Mixed-case addresses must have a valid EIP-55 checksum
+  const looksLikeAddress = isAddress(debounced, { strict: false })
+  const isAddressInput = looksLikeAddress && isAddress(debounced)
   let name: string | undefined
-  if (!isAddressInput && debounced.includes('.')) {
+  if (!looksLikeAddress && debounced.includes('.')) {
     try {
       name = normalize(debounced)
     } catch {
@@ -59,11 +61,13 @@ export function useRecipient({
   const error =
     !debounced || isLoading
       ? undefined
-      : !isAddressInput && !name
-        ? 'Enter an address or ENS name'
-        : name && forward.isFetched && !address
-          ? 'Name does not resolve to an address'
-          : undefined
+      : looksLikeAddress && !isAddressInput
+        ? 'Invalid address checksum'
+        : !isAddressInput && !name
+          ? 'Enter an address or ENS name'
+          : name && forward.isFetched && !address
+            ? 'Name does not resolve to an address'
+            : undefined
 
   const recipient: Recipient | undefined = address
     ? { address, name: name ?? reverse.data ?? undefined }

@@ -11,7 +11,12 @@ import {FairyResolver} from "../src/FairyResolver.sol";
 ///         chain. Deploy every chain from the same commit, since any change to
 ///         the contract's bytecode changes the address.
 ///
-///   forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <name>
+///   forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --skip-simulation --account <name>
+///
+/// `--skip-simulation` makes forge take the gas limit from the node's
+/// `eth_estimateGas`. Forge's own simulation prices code deposits with an older
+/// gas schedule: on Sepolia the deploy needs ~20M gas but forge would set ~4M,
+/// and the CREATE2 runs out of gas.
 ///
 /// Re-running on a chain where it's already deployed does nothing.
 contract DeployFairyResolver is Script {

@@ -9,7 +9,8 @@ const FALLBACK_RPCS: Record<string, string> = {
   '11155111': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
 
-// Only proxy read methods the app needs. Signing happens in the user's wallet.
+// Standard JSON-RPC namespaces only, which keeps out expensive debug_/trace_
+// calls. Hosted RPCs hold no keys, so eth_ signing methods just error.
 const ALLOWED_METHOD = /^(eth_|net_version$)/
 
 function rpcUrl(env: Env, chainId: string) {
