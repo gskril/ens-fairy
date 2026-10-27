@@ -11,6 +11,7 @@ import {
   erc20Abi,
   getAddress,
   isAddress,
+  zeroHash,
 } from 'viem'
 import {
   getCapabilities,
@@ -24,7 +25,7 @@ import {
   writeContract,
 } from 'wagmi/actions'
 
-import { getFairyResolver } from '../lib/contracts'
+import { FAIRY_REFERRER, getFairyResolver } from '../lib/contracts'
 import {
   type EnsChain,
   PAYMENT_TOKENS,
@@ -77,6 +78,8 @@ type Draft = {
   secret: Hex
   /** The resolver the commitment was made with */
   resolver: Address
+  /** The referrer the commitment was made with (absent on older drafts) */
+  referrer?: Hex
   /** EIP-5792 batch id, while a batched setup is in flight */
   batchId?: string
   commitHash?: Hash
@@ -235,7 +238,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     if (!draft) {
       const resolver = getFairyResolver(params.chainId)
       if (!resolver) throw new Error('Gifting is paused on this network')
-      draft = { secret: randomSecret(), resolver }
+      draft = { secret: randomSecret(), resolver, referrer: FAIRY_REFERRER }
       saveDraft(params, draft)
     }
     return draft
@@ -261,6 +264,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
         duration: yearsToSeconds(params.years),
         secret: draft.secret,
         resolverAddress: draft.resolver,
+        referrer: draft.referrer ?? zeroHash,
       }
     },
     [params]
@@ -391,6 +395,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
         account,
         secret: draft.secret,
         resolverAddress: draft.resolver,
+        referrer: draft.referrer ?? zeroHash,
       }
 
       // A batch that was sent before a reload: wait for it to finish
