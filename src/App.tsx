@@ -8,9 +8,13 @@ import { GiftDialog } from './components/GiftDialog'
 import { Nav } from './components/Nav'
 import { TestnetFaucet } from './components/TestnetFaucet'
 import { WalletModal } from './components/WalletModal'
-import { GithubIcon } from './components/icons'
+import { CloseIcon, GithubIcon } from './components/icons'
 import { Button, Input, Spinner } from './components/ui'
-import { type GiftParams, findPendingGifts } from './hooks/useGiftFlow'
+import {
+  type GiftParams,
+  discardGift,
+  findPendingGifts,
+} from './hooks/useGiftFlow'
 import { useName } from './hooks/useName'
 import { useRecipient } from './hooks/useRecipient'
 import { getFairyResolver } from './lib/contracts'
@@ -52,11 +56,18 @@ export function App() {
   }>()
   const [giftOpen, setGiftOpen] = useState(false)
 
-  // Gifts committed before a reload. Re-read whenever the dialog closes.
+  // Gifts committed before a reload. Re-read whenever the dialog closes or
+  // one is dismissed.
+  const [dismissals, setDismissals] = useState(0)
   const pendingGifts = useMemo(
     () => (giftOpen ? [] : findPendingGifts(chainId)),
-    [chainId, giftOpen]
+    [chainId, giftOpen, dismissals]
   )
+
+  function dismissGift(params: GiftParams) {
+    discardGift(params)
+    setDismissals((n) => n + 1)
+  }
 
   function resumeGift(params: GiftParams) {
     if (!isConnected) {
@@ -157,7 +168,9 @@ export function App() {
               <span>
                 Unfinished gift:{' '}
                 <span {...styles.pendingName()}>{pending.label}.eth</span> to{' '}
-                {shortenAddress(pending.recipient)}
+                <span {...styles.pendingAddress()}>
+                  {shortenAddress(pending.recipient)}
+                </span>
               </span>
               <div {...styles.pendingAction()}>
                 <Button
@@ -167,6 +180,15 @@ export function App() {
                 >
                   Resume
                 </Button>
+                <button
+                  type="button"
+                  aria-label={`Dismiss unfinished gift of ${pending.label}.eth`}
+                  title="Dismiss"
+                  onClick={() => dismissGift(pending)}
+                  {...styles.dismiss()}
+                >
+                  <CloseIcon size={12} />
+                </button>
               </div>
             </div>
           ))}
@@ -474,12 +496,34 @@ namespace styles {
     fontWeight: 500,
   })
 
-  export const pendingAction = style({ flex: 'none' })
+  export const pendingAction = style({
+    display: 'flex',
+    flex: 'none',
+    gap: '0.5rem',
+  })
+
+  export const dismiss = style({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '2.5rem',
+    height: '2.5rem',
+    border: 'none',
+    borderRadius: '0.75rem',
+    backgroundColor: 'var(--surface-secondary)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    transitionProperty: 'color, background-color',
+    transitionDuration: '150ms',
+    ':hover': { backgroundColor: 'var(--border)', color: 'var(--text)' },
+  })
+
+  export const pendingAddress = style({ whiteSpace: 'nowrap' })
 
   export const pendingName = style({
     color: 'var(--text)',
     fontFamily: 'var(--font-mono)',
-    wordBreak: 'break-all',
+    overflowWrap: 'anywhere',
   })
 
   export const maintenance = style({

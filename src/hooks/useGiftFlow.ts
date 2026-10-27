@@ -121,6 +121,11 @@ function draftKey({ chainId, label, recipient, years, token }: GiftParams) {
   return `${DRAFT_PREFIX}${chainId}:${label}:${recipient.toLowerCase()}:${years}:${token}`
 }
 
+/** Forget a saved gift, e.g. when the user dismisses its resume notice. */
+export function discardGift(params: GiftParams) {
+  saveDraft(params, undefined)
+}
+
 /**
  * Gifts on `chainId` that were committed (or sent as a batch) in an earlier
  * visit, so they can be resumed without re-entering the form. Read from the
