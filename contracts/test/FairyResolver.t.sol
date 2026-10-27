@@ -113,7 +113,7 @@ contract FairyResolverTest is Test {
 
     function test_emitsV2RecordEvents() public {
         _gift(gifter, recipient);
-        uint256 recordId = resolver.getRecordCount() + 1;
+        uint256 recordId = resolver.getRecordId(name);
 
         vm.startPrank(recipient);
         vm.expectEmit(address(resolver));
@@ -122,21 +122,30 @@ contract FairyResolverTest is Test {
         emit IAddressSetter.AddressUpdated(recordId, 60, abi.encodePacked(elsewhere));
         resolver.setAddress(name, 60, abi.encodePacked(elsewhere));
 
-        // Later writes reuse the record without linking again
-        vm.recordLogs();
-        resolver.setText(name, "url", "https://fairy.example");
-        assertEq(vm.getRecordedLogs().length, 1);
-        assertEq(resolver.getRecordId(name), recordId);
-
         vm.expectEmit(address(resolver));
         emit IRecordResolver.Cleared(recordId);
         resolver.clearRecords(name);
-        assertEq(resolver.getRecordId(name), 0);
+        uint256 nextRecordId = resolver.getRecordId(name);
+        assertNotEq(nextRecordId, recordId);
 
         vm.expectEmit(address(resolver));
-        emit IRecordResolver.Linked(recordId + 1, node, name);
+        emit IRecordResolver.Linked(nextRecordId, node, name);
         resolver.setText(name, "url", "https://fairy.example");
         vm.stopPrank();
+    }
+
+    function test_recordIdFollowsRegistration() public {
+        _gift(gifter, recipient);
+        uint256 recordId = resolver.getRecordId(name);
+        uint256 tokenId = ETH_REGISTRY.getTokenId(LibLabel.id(label));
+
+        vm.prank(recipient);
+        IERC1155(address(ETH_REGISTRY)).safeTransferFrom(recipient, stranger, tokenId, 1, "");
+        assertEq(resolver.getRecordId(name), recordId, "transfer changed the record");
+
+        vm.warp(block.timestamp + 2 * DURATION);
+        _gift(stranger, stranger);
+        assertNotEq(resolver.getRecordId(name), recordId, "re-registration kept the record");
     }
 
     function test_recipientCanSetAddress() public {

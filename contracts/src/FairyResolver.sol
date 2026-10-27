@@ -60,9 +60,11 @@ import {ERC165Checker} from "@openzeppelin/utils/introspection/ERC165Checker.sol
 /// change on transfers, renewals, or role changes, so those keep their
 /// records, as in ENSv1.
 ///
-/// Records are numbered like PermissionedResolver's: the first write to a
-/// registration creates a record and emits `Linked(recordId, node, name)`, and
-/// every write emits the matching `*Updated(recordId, ...)` event.
+/// Records use PermissionedResolver's events: every write emits
+/// `Linked(recordId, node, name)` and the matching `*Updated(recordId, ...)`.
+/// The record ID is derived from the registration instead of stored, so the
+/// first write can't be told apart and `Linked` is repeated, which indexers
+/// can treat as a no-op.
 ///
 /// Only second-level .eth names are supported. The contract has no owner, no
 /// admin functions, and isn't upgradeable.
@@ -77,18 +79,12 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     /// @notice Bumped by `clearRecords` to start a registration's record over.
     mapping(uint256 resource => uint64 version) public recordVersions;
 
-    /// @dev The record for a registration at a clear-version, see `_recordKey`.
-    ///      Zero until the first write.
-    mapping(bytes32 recordKey => uint256 recordId) private _recordIds;
-
-    /// @dev Record 0 is never written, so it reads as empty.
+    /// @dev Keyed by `_recordId`.
     mapping(uint256 recordId => AbstractRecordResolver.Record record) private _records;
 
     /// @dev Distinguishes an explicitly set (possibly empty) ETH address from
     ///      one that was never set, which falls back to the owner.
     mapping(uint256 recordId => bool isSet) private _ethAddressSet;
-
-    uint256 private _recordCount;
 
     /// @notice Accounts an owner allows to manage records for all their names.
     mapping(address owner => mapping(address operator => bool approved)) public isApprovedForAll;
@@ -220,13 +216,12 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     }
 
     /// @notice Remove every record. The ETH address goes back to the owner.
-    /// @dev The next write creates a new record and links the name to it.
+    /// @dev The name moves to a new, empty record, which the next write links.
     /// @param name The DNS-encoded name.
     function clearRecords(bytes calldata name) external {
         (, uint256 resource) = _authorize(name);
-        uint256 recordId = _recordIds[_recordKey(resource)];
+        emit Cleared(_recordId(resource));
         ++recordVersions[resource];
-        if (recordId != 0) emit Cleared(recordId);
     }
 
     /// @notice Let `operator` manage records for every name the caller owns.
@@ -295,14 +290,15 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
         }
 
         (, string memory label) = _parseName(name);
-        uint256 recordId = _recordIds[_recordKey(_resource(label))];
+        (address owner, uint256 resource) = _registration(label);
+        uint256 recordId = _recordId(resource);
         AbstractRecordResolver.Record storage r = _records[recordId];
 
         if (selector == IAddrResolver.addr.selector) {
-            return abi.encode(_addr(recordId, label));
+            return abi.encode(_addr(recordId, owner));
         } else if (selector == IAddressResolver.addr.selector) {
             (, uint256 coinType) = abi.decode(data[4:], (bytes32, uint256));
-            return abi.encode(_address(recordId, label, coinType));
+            return abi.encode(_address(recordId, owner, coinType));
         } else if (selector == ITextResolver.text.selector) {
             (, string memory key) = abi.decode(data[4:], (bytes32, string));
             return abi.encode(r.texts[key]);
@@ -324,7 +320,7 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
             (, bytes4 interfaceId) = abi.decode(data[4:], (bytes32, bytes4));
             address implementer = r.interfaces[interfaceId];
             if (implementer == address(0)) {
-                address pointer = _addr(recordId, label);
+                address pointer = _addr(recordId, owner);
                 if (ERC165Checker.supportsInterface(pointer, interfaceId)) {
                     implementer = pointer;
                 }
@@ -338,14 +334,16 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     /// @param name The DNS-encoded name.
     function ownerOf(bytes calldata name) external view returns (address) {
         (, string memory label) = _parseName(name);
-        return _owner(label);
+        (address owner,) = _registration(label);
+        return owner;
     }
 
     /// @notice Whether `account` can write records for `name`.
     /// @param name The DNS-encoded name.
     function canModifyName(bytes calldata name, address account) external view returns (bool) {
         (bytes32 node, string memory label) = _parseName(name);
-        return _canModify(_owner(label), node, account);
+        (address owner,) = _registration(label);
+        return _canModify(owner, node, account);
     }
 
     /// @notice Whether `owner` approved `delegate` for the name with namehash `node`.
@@ -357,16 +355,12 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
         return _tokenApprovals[owner][node][delegate];
     }
 
-    /// @notice The record `name` currently resolves from, or 0 if it has none.
+    /// @notice The record `name` currently resolves from.
     /// @param name The DNS-encoded name.
     function getRecordId(bytes calldata name) external view returns (uint256) {
         (, string memory label) = _parseName(name);
-        return _recordIds[_recordKey(_resource(label))];
-    }
-
-    /// @notice The number of records created.
-    function getRecordCount() external view returns (uint256) {
-        return _recordCount;
+        (, uint256 resource) = _registration(label);
+        return _recordId(resource);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -377,8 +371,9 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     function _authorize(bytes calldata name) private view returns (bytes32 node, uint256 resource) {
         string memory label;
         (node, label) = _parseName(name);
-        if (!_canModify(_owner(label), node, msg.sender)) revert Unauthorized(name, msg.sender);
-        resource = _resource(label);
+        address owner;
+        (owner, resource) = _registration(label);
+        if (!_canModify(owner, node, msg.sender)) revert Unauthorized(name, msg.sender);
     }
 
     function _canModify(address owner, bytes32 node, address account) private view returns (bool) {
@@ -388,22 +383,16 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
                 || _tokenApprovals[owner][node][account]);
     }
 
-    /// @dev Authorizes the caller and returns the registration's record,
-    ///      creating and linking one on the first write.
+    /// @dev Authorizes the caller and links the name to its registration's record.
     function _writableRecord(bytes calldata name) private returns (uint256 recordId) {
         (bytes32 node, uint256 resource) = _authorize(name);
-        bytes32 recordKey = _recordKey(resource);
-        recordId = _recordIds[recordKey];
-        if (recordId == 0) {
-            recordId = ++_recordCount;
-            _recordIds[recordKey] = recordId;
-            emit Linked(recordId, node, name);
-        }
+        recordId = _recordId(resource);
+        emit Linked(recordId, node, name);
     }
 
     /// @dev ENSIP-19: an unset EVM address falls back to the default address.
     ///      An ETH address that was never set falls back to the owner after that.
-    function _address(uint256 recordId, string memory label, uint256 coinType)
+    function _address(uint256 recordId, address owner, uint256 coinType)
         private
         view
         returns (bytes memory addressBytes)
@@ -413,15 +402,17 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
         if (addressBytes.length == 0 && ENSIP19.chainFromCoinType(coinType) > 0) {
             addressBytes = r.addresses[COIN_TYPE_DEFAULT];
         }
-        if (addressBytes.length == 0 && coinType == COIN_TYPE_ETH && !_ethAddressSet[recordId]) {
-            address owner = _owner(label);
-            if (owner != address(0)) addressBytes = abi.encodePacked(owner);
+        if (
+            addressBytes.length == 0 && coinType == COIN_TYPE_ETH && !_ethAddressSet[recordId]
+                && owner != address(0)
+        ) {
+            addressBytes = abi.encodePacked(owner);
         }
     }
 
-    function _addr(uint256 recordId, string memory label) private view returns (address) {
+    function _addr(uint256 recordId, address owner) private view returns (address) {
         // forge-lint: disable-next-line(unsafe-typecast)
-        return address(bytes20(_address(recordId, label, COIN_TYPE_ETH)));
+        return address(bytes20(_address(recordId, owner, COIN_TYPE_ETH)));
     }
 
     /// @dev Find the ABI matching the `contentTypes` filter.
@@ -440,19 +431,21 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     }
 
     /// @dev A registration's record at its current clear-version.
-    function _recordKey(uint256 resource) private view returns (bytes32) {
-        return keccak256(abi.encode(resource, recordVersions[resource]));
+    function _recordId(uint256 resource) private view returns (uint256) {
+        return uint256(keccak256(abi.encode(resource, recordVersions[resource])));
     }
 
-    /// @dev Zero once the name expires.
-    function _owner(string memory label) private view returns (address) {
-        return ETH_REGISTRY.getOwner(LibLabel.id(label));
-    }
-
-    /// @dev Changes when the name is registered again, but not on transfers,
-    ///      renewals, or role changes.
-    function _resource(string memory label) private view returns (uint256) {
-        return ETH_REGISTRY.getResource(LibLabel.id(label));
+    /// @dev The name's owner, zero unless it's registered and unexpired, and
+    ///      its resource ID, which changes when the name is registered again
+    ///      but not on transfers, renewals, or role changes. One registry call.
+    function _registration(string memory label)
+        private
+        view
+        returns (address owner, uint256 resource)
+    {
+        IPermissionedRegistry.State memory state = ETH_REGISTRY.getState(LibLabel.id(label));
+        if (state.status == IPermissionedRegistry.Status.REGISTERED) owner = state.latestOwner;
+        resource = state.resource;
     }
 
     /// @dev Accepts only `{label}.eth`, returning its namehash and label.
