@@ -1,3 +1,7 @@
+// Self-hosted fonts, bundled by Vite. Browsers only fetch the subsets they need.
+import '@fontsource-variable/geist-mono/wght.css'
+import '@fontsource-variable/inter-tight/wght.css'
+import '@fontsource-variable/newsreader/opsz.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

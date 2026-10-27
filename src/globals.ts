@@ -30,10 +30,10 @@ global({
     '--radius-lg': '1.25rem',
     // Type
     '--font':
-      "'ABC Monument Grotesk', 'Inter Tight', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
-    '--font-body': "'ABC Marist', 'Newsreader', Georgia, serif",
+      "'ABC Monument Grotesk', 'Inter Tight Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+    '--font-body': "'ABC Marist', 'Newsreader Variable', Georgia, serif",
     '--font-mono':
-      "'ABC Monument Grotesk Semi-Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+      "'ABC Monument Grotesk Semi-Mono', 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace",
   },
   html: {
     backgroundColor: 'var(--background)',
