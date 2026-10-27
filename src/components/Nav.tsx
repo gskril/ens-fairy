@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { getEnsName } from 'viem/actions'
 import { useConnection, useDisconnect } from 'wagmi'
-import { style } from 'zyzz'
+import { cx, style } from 'zyzz'
 
 import { useEnsClient } from '../hooks/useEnsClient'
 import { getChain, isSupportedChain, mainnet } from '../lib/wagmi'
@@ -13,11 +13,17 @@ import { FairyMark } from './icons'
 import { Button } from './ui'
 
 export function Nav() {
+  const { isConnected } = useConnection()
+
   return (
     <nav {...styles.nav()}>
       <a href="/" aria-label="ENS Fairy home" {...styles.logo()}>
         <FairyMark size={36} />
-        <span {...styles.wordmark()}>ENS Fairy</span>
+        <span
+          {...cx(styles.wordmark(), isConnected && styles.wordmarkConnected())}
+        >
+          ENS Fairy
+        </span>
       </a>
       <ConnectButton />
     </nav>
@@ -138,6 +144,11 @@ namespace styles {
     letterSpacing: '-0.03em',
   })
 
+  // Make room for the profile button on small screens
+  export const wordmarkConnected = style({
+    '@media (max-width: 639px)': { display: 'none' },
+  })
+
   export const connect = style({ width: '8rem' })
 
   export const profileWrapper = style({
@@ -149,13 +160,18 @@ namespace styles {
   })
 
   export const chainBadge = style({
-    padding: '0.25rem 0.5rem',
-    borderRadius: '0.375rem',
+    padding: '0.125rem 0.375rem',
+    borderRadius: '0.25rem',
     backgroundColor: 'var(--blue-light)',
     color: 'var(--blue)',
     fontFamily: 'var(--font-mono)',
-    fontSize: '0.8125rem',
+    fontSize: '0.6875rem',
     fontWeight: 500,
+    '@media (min-width: 640px)': {
+      padding: '0.25rem 0.5rem',
+      borderRadius: '0.375rem',
+      fontSize: '0.8125rem',
+    },
   })
 
   export const profile = style({
