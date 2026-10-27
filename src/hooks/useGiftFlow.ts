@@ -1,6 +1,7 @@
 import { randomSecret } from '@ensdomains/ensjs/utils'
 import { commitName, registerName } from '@ensdomains/ensjs/wallet'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 import {
   type Account,
   type Address,
@@ -91,10 +92,28 @@ type Draft = {
 async function supportsAtomicBatch(chainId: SupportedChainId) {
   try {
     const capabilities = await getCapabilities(config, { chainId })
-    return capabilities.atomic?.status === 'supported'
-  } catch {
+    const supported = capabilities.atomic?.status === 'supported'
+    debugBatching(supported, JSON.stringify(capabilities))
+    return supported
+  } catch (err) {
+    debugBatching(false, err instanceof Error ? err.message : String(err))
     return false
   }
+}
+
+/**
+ * With `?debug` in the URL, show what the wallet reported for EIP-5792 and
+ * whether the gift will be batched. Useful in mobile wallet browsers, which
+ * have no console.
+ */
+function debugBatching(batched: boolean, detail: string) {
+  if (!new URLSearchParams(window.location.search).has('debug')) return
+  toast(
+    `${batched ? 'Batching' : 'Not batching'}. wallet_getCapabilities: ${detail}`,
+    {
+      duration: 30_000,
+    }
+  )
 }
 
 const STEP_ORDER: Phase[] = [
