@@ -57,6 +57,7 @@ bun run deploy
 
 - **Owner-controlled.** Only the name's current owner in the ENSv2 .eth registry, or an operator they approve, can write records. There's no admin and no upgrade path.
 - **Resolves to the owner by default.** Until the owner sets one, the ETH address is the name's current owner, so a gifted name works the moment it's registered and follows the name if it's transferred.
+- **Records belong to a registration.** They're keyed by the registry's resource ID, which changes when a name is registered again, so if a name expires and someone else registers it they start clean. Transfers and renewals keep records.
 - **Editable in the ENS manager.** Setters take the DNS-encoded name (`setAddress(bytes,uint256,bytes)`, `setText`, `setContenthash`, `clearRecords`, `multicall`), which the manager detects and writes through.
 - **Basic profiles only.** It serves addresses, text records and contenthash through ENSIP-10 `resolve`, for second-level .eth names. No EAC roles.
 

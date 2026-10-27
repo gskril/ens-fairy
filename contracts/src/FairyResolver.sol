@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @dev The ENSv2 .eth registry exposes the owner of each label.
-interface IOwnedRegistry {
+/// @dev The parts of the ENSv2 .eth registry (a PermissionedRegistry) this uses.
+interface IETHRegistry {
+    /// @notice The label's current owner, or zero if it's expired or unregistered.
     function findOwner(string calldata label) external view returns (address);
+
+    /// @notice The label's EAC resource. It changes whenever the name is
+    ///         registered again, but not on transfers, renewals, or role changes.
+    function getResource(uint256 anyId) external view returns (uint256);
 }
 
 /// @title FairyResolver
@@ -17,6 +22,11 @@ interface IOwnedRegistry {
 /// owner. A gifted name therefore resolves to the recipient the moment it's
 /// registered, with no records written, and keeps following the owner if the
 /// name is transferred.
+///
+/// Records belong to a registration, not just a name: they're keyed by the
+/// registry's resource ID, which changes when a name is registered again. If a
+/// name expires and someone else registers it, they start with no records
+/// instead of inheriting the previous owner's.
 ///
 /// Setters take the DNS-encoded name (like the ENSv2 PermissionedResolver),
 /// so the ENS manager app recognizes them and can edit records. Reads go
@@ -54,23 +64,23 @@ contract FairyResolver {
     ////////////////////////////////////////////////////////////////////////
 
     /// @notice The ENSv2 .eth registry that decides who owns each name.
-    IOwnedRegistry public immutable ETH_REGISTRY;
+    IETHRegistry public immutable ETH_REGISTRY;
 
-    /// @notice Bumped by `clearRecords` to drop every record for a name.
-    mapping(bytes32 node => uint64 version) public recordVersions;
+    /// @notice Bumped by `clearRecords` to drop every record for a registration.
+    mapping(uint256 resource => uint64 version) public recordVersions;
 
-    mapping(uint64 version => mapping(bytes32 node => mapping(uint256 coinType => bytes addressBytes)))
+    /// @dev Every record lives under a key derived from the registration's
+    ///      resource and its clear-version, see `_recordKey`.
+    mapping(bytes32 recordKey => mapping(uint256 coinType => bytes addressBytes))
         private _addresses;
 
     /// @dev Distinguishes an explicitly set (possibly empty) address from one
     ///      that was never set, which falls back to the owner for ETH.
-    mapping(uint64 version => mapping(bytes32 node => mapping(uint256 coinType => bool isSet)))
-        private _addressIsSet;
+    mapping(bytes32 recordKey => mapping(uint256 coinType => bool isSet)) private _addressIsSet;
 
-    mapping(uint64 version => mapping(bytes32 node => mapping(string key => string value)))
-        private _texts;
+    mapping(bytes32 recordKey => mapping(string key => string value)) private _texts;
 
-    mapping(uint64 version => mapping(bytes32 node => bytes hash)) private _contenthashes;
+    mapping(bytes32 recordKey => bytes hash) private _contenthashes;
 
     /// @notice Accounts an owner allows to manage records for all their names.
     mapping(address owner => mapping(address operator => bool approved)) public isApprovedForAll;
@@ -108,7 +118,7 @@ contract FairyResolver {
     ////////////////////////////////////////////////////////////////////////
 
     /// @param ethRegistry The ENSv2 .eth registry.
-    constructor(IOwnedRegistry ethRegistry) {
+    constructor(IETHRegistry ethRegistry) {
         ETH_REGISTRY = ethRegistry;
     }
 
@@ -121,37 +131,37 @@ contract FairyResolver {
     function setAddress(bytes calldata name, uint256 coinType, bytes calldata addressBytes)
         external
     {
-        bytes32 node = _authorize(name);
+        (bytes32 node, uint256 resource) = _authorize(name);
         if (coinType == COIN_TYPE_ETH && addressBytes.length != 0 && addressBytes.length != 20) {
             revert InvalidEVMAddress(addressBytes);
         }
-        uint64 version = recordVersions[node];
-        _addresses[version][node][coinType] = addressBytes;
-        _addressIsSet[version][node][coinType] = true;
+        bytes32 recordKey = _recordKey(resource);
+        _addresses[recordKey][coinType] = addressBytes;
+        _addressIsSet[recordKey][coinType] = true;
         emit AddressChanged(node, coinType, addressBytes);
     }
 
     /// @notice Set a text record. An empty value removes it.
     /// @param name The DNS-encoded name.
     function setText(bytes calldata name, string calldata key, string calldata value) external {
-        bytes32 node = _authorize(name);
-        _texts[recordVersions[node]][node][key] = value;
+        (bytes32 node, uint256 resource) = _authorize(name);
+        _texts[_recordKey(resource)][key] = value;
         emit TextChanged(node, key, key, value);
     }
 
     /// @notice Set the contenthash. An empty value removes it.
     /// @param name The DNS-encoded name.
     function setContenthash(bytes calldata name, bytes calldata hash) external {
-        bytes32 node = _authorize(name);
-        _contenthashes[recordVersions[node]][node] = hash;
+        (bytes32 node, uint256 resource) = _authorize(name);
+        _contenthashes[_recordKey(resource)] = hash;
         emit ContenthashChanged(node, hash);
     }
 
     /// @notice Remove every record. The ETH address goes back to the owner.
     /// @param name The DNS-encoded name.
     function clearRecords(bytes calldata name) external {
-        bytes32 node = _authorize(name);
-        uint64 version = ++recordVersions[node];
+        (bytes32 node, uint256 resource) = _authorize(name);
+        uint64 version = ++recordVersions[resource];
         emit VersionChanged(node, version);
     }
 
@@ -190,23 +200,24 @@ contract FairyResolver {
         view
         returns (bytes memory)
     {
-        (bytes32 node, string calldata label) = _parseName(name);
+        (, string calldata label) = _parseName(name);
+        bytes32 recordKey = _recordKey(_resource(label));
         bytes4 selector = bytes4(data);
 
         if (selector == ADDR_SELECTOR) {
-            return abi.encode(address(bytes20(_ethAddress(node, label))));
+            return abi.encode(address(bytes20(_ethAddress(recordKey, label))));
         }
         if (selector == ADDR_COIN_SELECTOR) {
             (, uint256 coinType) = abi.decode(data[4:], (bytes32, uint256));
-            if (coinType == COIN_TYPE_ETH) return abi.encode(_ethAddress(node, label));
-            return abi.encode(_addresses[recordVersions[node]][node][coinType]);
+            if (coinType == COIN_TYPE_ETH) return abi.encode(_ethAddress(recordKey, label));
+            return abi.encode(_addresses[recordKey][coinType]);
         }
         if (selector == TEXT_SELECTOR) {
             (, string memory key) = abi.decode(data[4:], (bytes32, string));
-            return abi.encode(_texts[recordVersions[node]][node][key]);
+            return abi.encode(_texts[recordKey][key]);
         }
         if (selector == CONTENTHASH_SELECTOR) {
-            return abi.encode(_contenthashes[recordVersions[node]][node]);
+            return abi.encode(_contenthashes[recordKey]);
         }
         revert UnsupportedResolverProfile(selector);
     }
@@ -242,27 +253,44 @@ contract FairyResolver {
     ////////////////////////////////////////////////////////////////////////
 
     /// @dev Reverts unless the caller owns `name` or is an approved operator.
-    function _authorize(bytes calldata name) private view returns (bytes32 node) {
+    function _authorize(bytes calldata name)
+        private
+        view
+        returns (bytes32 node, uint256 resource)
+    {
         string calldata label;
         (node, label) = _parseName(name);
         address owner = _owner(label);
         if (owner == address(0) || (msg.sender != owner && !isApprovedForAll[owner][msg.sender])) {
             revert Unauthorized(name, msg.sender);
         }
+        resource = _resource(label);
     }
 
     /// @dev The explicit ETH address, or the owner's if none was ever set.
-    function _ethAddress(bytes32 node, string calldata label) private view returns (bytes memory) {
-        uint64 version = recordVersions[node];
-        if (_addressIsSet[version][node][COIN_TYPE_ETH]) {
-            return _addresses[version][node][COIN_TYPE_ETH];
+    function _ethAddress(bytes32 recordKey, string calldata label)
+        private
+        view
+        returns (bytes memory)
+    {
+        if (_addressIsSet[recordKey][COIN_TYPE_ETH]) {
+            return _addresses[recordKey][COIN_TYPE_ETH];
         }
         address owner = _owner(label);
         return owner == address(0) ? bytes("") : abi.encodePacked(owner);
     }
 
+    /// @dev Records for one registration, at its current clear-version.
+    function _recordKey(uint256 resource) private view returns (bytes32) {
+        return keccak256(abi.encode(resource, recordVersions[resource]));
+    }
+
     function _owner(string calldata label) private view returns (address) {
         return ETH_REGISTRY.findOwner(label);
+    }
+
+    function _resource(string calldata label) private view returns (uint256) {
+        return ETH_REGISTRY.getResource(uint256(keccak256(bytes(label))));
     }
 
     /// @dev Parses `\x{len}label\x03eth\x00` into its namehash and label.

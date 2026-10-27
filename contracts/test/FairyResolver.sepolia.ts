@@ -123,6 +123,24 @@ const gift = getGiftCalls(client, {
 const { timestamp } = await getBlock(client)
 const at = (seconds: number) => ({ time: timestamp + BigInt(seconds) })
 
+// Someone else registers the same name after it expires
+const EXPIRED = 2 * 365 * 24 * 60 * 60
+const mintTo = (account: Address) => ({
+  to: usdc,
+  data: encodeFunctionData({
+    abi: parseAbi(['function mint(address,uint256)']),
+    args: [account, 10n ** 12n],
+  }),
+})
+const regift = getGiftCalls(client, {
+  ...setup,
+  account: stranger,
+  recipient: stranger,
+  secret: randomSecret(),
+  resolverAddress: resolver,
+  approveAmount: 10n ** 12n,
+})
+
 const blocks = [
   {
     name: 'deploy + fund',
@@ -222,6 +240,53 @@ const blocks = [
         'b',
       ]), // 2: subnames unsupported
       call(recipient, 'setAddress', [dnsName, 60n, '0x1234']), // 3: bad length
+      // 4-5: explicit records the next registrant must not inherit
+      call(recipient, 'setAddress', [dnsName, 60n, elsewhere]),
+      call(recipient, 'setText', [dnsName, 'description', 'previous owner']),
+    ],
+  },
+  {
+    // Well past expiry and the grace period
+    name: 'expired, re-registered by someone else',
+    blockOverrides: at(EXPIRED),
+    calls: [
+      // The Universal Resolver won't resolve expired names at all, so ask the
+      // resolver directly whether it still holds the old records
+      view('resolve', [
+        dnsName,
+        encodeFunctionData({
+          abi: profileAbi,
+          functionName: 'addr',
+          args: [node],
+        }),
+      ]), // 0
+      view('resolve', [
+        dnsName,
+        encodeFunctionData({
+          abi: profileAbi,
+          functionName: 'text',
+          args: [node, 'description'],
+        }),
+      ]), // 1
+      call(recipient, 'setText', [dnsName, 'url', 'still mine?']), // 2
+      { account: stranger, ...mintTo(stranger) }, // 3
+      { account: stranger, ...regift.approve }, // 4
+      { account: stranger, ...regift.commit }, // 5
+    ],
+  },
+  {
+    name: 're-register',
+    blockOverrides: at(EXPIRED + 600),
+    calls: [{ account: stranger, ...regift.register }],
+  },
+  {
+    name: 'after re-registration',
+    blockOverrides: at(EXPIRED + 612),
+    calls: [
+      resolveAddr(), // 0: the new owner, not the old explicit address
+      resolveText('description'), // 1: no inherited text
+      call(stranger, 'setText', [dnsName, 'description', 'mine now']), // 2
+      call(recipient, 'setText', [dnsName, 'description', 'nope']), // 3
     ],
   },
 ]
@@ -266,7 +331,8 @@ for (const [i, block] of results.entries()) {
   }
 }
 
-const [, , , after, , edited, cleared] = results.map((b) => b.calls as any[])
+const [, , , after, , edited, cleared, expired, reregistered, afterRereg] =
+  results.map((b) => b.calls as any[])
 check(
   'name resolves to the recipient with no records written',
   lower(resolvedAddress(after[0])) === lower(recipient),
@@ -318,6 +384,45 @@ check(
 check(
   'malformed ETH addresses are rejected',
   !ok(cleared[3]) && decodeError(cleared[3]) === 'InvalidEVMAddress'
+)
+check('previous owner set explicit records', ok(cleared[4]) && ok(cleared[5]))
+const direct = (result: any, type: 'address' | 'string') =>
+  result.status === 'success'
+    ? decodeAbiParameters([{ type }], result.result)[0]
+    : `failed: ${result.error?.shortMessage}`
+check(
+  'expired name holds no stale address',
+  direct(expired[0], 'address') ===
+    '0x0000000000000000000000000000000000000000',
+  String(direct(expired[0], 'address'))
+)
+check(
+  'expired name holds no stale text',
+  direct(expired[1], 'string') === '',
+  String(direct(expired[1], 'string'))
+)
+check(
+  'previous owner cannot write after expiry',
+  !ok(expired[2]) && decodeError(expired[2]) === 'Unauthorized'
+)
+check(
+  'someone else can register the expired name',
+  [3, 4, 5].every((i) => ok(expired[i])) && ok(reregistered[0]),
+  reregistered[0].error?.shortMessage
+)
+check(
+  'new registrant resolves to themselves, not the old explicit address',
+  lower(resolvedAddress(afterRereg[0])) === lower(stranger),
+  resolvedAddress(afterRereg[0])
+)
+check(
+  'new registrant inherits no text records',
+  resolvedText(afterRereg[1]) === ''
+)
+check('new registrant can write records', ok(afterRereg[2]))
+check(
+  'previous owner cannot write after re-registration',
+  !ok(afterRereg[3]) && decodeError(afterRereg[3]) === 'Unauthorized'
 )
 
 const gas = (result: any) => result.gasUsed
