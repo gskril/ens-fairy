@@ -9,14 +9,14 @@ import { useEnsClient } from '../hooks/useEnsClient'
 import { getChain, isSupportedChain, mainnet } from '../lib/wagmi'
 import { Avatar, shortenAddress } from './Avatar'
 import { WalletModal } from './WalletModal'
-import { EnsMark } from './icons'
+import { FairyMark } from './icons'
 import { Button } from './ui'
 
 export function Nav() {
   return (
     <nav {...styles.nav()}>
       <a href="/" aria-label="ENS Fairy home" {...styles.logo()}>
-        <EnsMark height={34} />
+        <FairyMark size={36} />
         <span {...styles.wordmark()}>ENS Fairy</span>
       </a>
       <ConnectButton />
@@ -126,12 +126,10 @@ namespace styles {
     width: '100%',
   })
 
-  // Clear space between symbol and text is at least 1/3 of the symbol width
   export const logo = style({
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
-    color: 'var(--blue)',
   })
 
   export const wordmark = style({
