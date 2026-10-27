@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {
-    IPermissionedRegistry
-} from "@ens/contracts-v2/registry/interfaces/IPermissionedRegistry.sol";
-import {IRegistry} from "@ens/contracts-v2/registry/interfaces/IRegistry.sol";
+import {IPermissionedRegistry} from "@ens/v2/registry/interfaces/IPermissionedRegistry.sol";
+import {IRegistry} from "@ens/v2/registry/interfaces/IRegistry.sol";
 import {Script, console} from "forge-std/Script.sol";
 
 import {FairyResolver} from "../src/FairyResolver.sol";

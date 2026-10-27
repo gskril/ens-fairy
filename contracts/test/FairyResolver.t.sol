@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IAddrResolver} from "@ens/contracts/resolvers/profiles/IAddrResolver.sol";
-import {IAddressResolver} from "@ens/contracts/resolvers/profiles/IAddressResolver.sol";
-import {ITextResolver} from "@ens/contracts/resolvers/profiles/ITextResolver.sol";
-import {IUniversalResolver} from "@ens/contracts/universalResolver/IUniversalResolver.sol";
-import {NameCoder} from "@ens/contracts/utils/NameCoder.sol";
-import {IETHRegistrar} from "@ens/contracts-v2/registrar/interfaces/IETHRegistrar.sol";
-import {
-    IPermissionedRegistry
-} from "@ens/contracts-v2/registry/interfaces/IPermissionedRegistry.sol";
-import {IRegistry} from "@ens/contracts-v2/registry/interfaces/IRegistry.sol";
-import {LibLabel} from "@ens/contracts-v2/utils/LibLabel.sol";
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAddrResolver} from "@ens/resolvers/profiles/IAddrResolver.sol";
+import {IAddressResolver} from "@ens/resolvers/profiles/IAddressResolver.sol";
+import {ITextResolver} from "@ens/resolvers/profiles/ITextResolver.sol";
+import {IUniversalResolver} from "@ens/universalResolver/IUniversalResolver.sol";
+import {NameCoder} from "@ens/utils/NameCoder.sol";
+import {IETHRegistrar} from "@ens/v2/registrar/interfaces/IETHRegistrar.sol";
+import {IPermissionedRegistry} from "@ens/v2/registry/interfaces/IPermissionedRegistry.sol";
+import {IRegistry} from "@ens/v2/registry/interfaces/IRegistry.sol";
+import {LibLabel} from "@ens/v2/utils/LibLabel.sol";
+import {IERC1155} from "@openzeppelin/token/ERC1155/IERC1155.sol";
+import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {FairyResolver} from "../src/FairyResolver.sol";

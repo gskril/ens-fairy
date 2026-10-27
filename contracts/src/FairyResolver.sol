@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IAddrResolver} from "@ens/contracts/resolvers/profiles/IAddrResolver.sol";
-import {IAddressResolver} from "@ens/contracts/resolvers/profiles/IAddressResolver.sol";
-import {IContentHashResolver} from "@ens/contracts/resolvers/profiles/IContentHashResolver.sol";
-import {IExtendedResolver} from "@ens/contracts/resolvers/profiles/IExtendedResolver.sol";
-import {ITextResolver} from "@ens/contracts/resolvers/profiles/ITextResolver.sol";
-import {IVersionableResolver} from "@ens/contracts/resolvers/profiles/IVersionableResolver.sol";
-import {COIN_TYPE_ETH, ENSIP19} from "@ens/contracts/utils/ENSIP19.sol";
-import {NameCoder} from "@ens/contracts/utils/NameCoder.sol";
-import {
-    IPermissionedRegistry
-} from "@ens/contracts-v2/registry/interfaces/IPermissionedRegistry.sol";
-import {LibLabel} from "@ens/contracts-v2/utils/LibLabel.sol";
-import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {IAddrResolver} from "@ens/resolvers/profiles/IAddrResolver.sol";
+import {IAddressResolver} from "@ens/resolvers/profiles/IAddressResolver.sol";
+import {IContentHashResolver} from "@ens/resolvers/profiles/IContentHashResolver.sol";
+import {IExtendedResolver} from "@ens/resolvers/profiles/IExtendedResolver.sol";
+import {ITextResolver} from "@ens/resolvers/profiles/ITextResolver.sol";
+import {IVersionableResolver} from "@ens/resolvers/profiles/IVersionableResolver.sol";
+import {COIN_TYPE_ETH, ENSIP19} from "@ens/utils/ENSIP19.sol";
+import {NameCoder} from "@ens/utils/NameCoder.sol";
+import {IPermissionedRegistry} from "@ens/v2/registry/interfaces/IPermissionedRegistry.sol";
+import {LibLabel} from "@ens/v2/utils/LibLabel.sol";
+import {ERC165} from "@openzeppelin/utils/introspection/ERC165.sol";
 
 /// @title FairyResolver
 /// @notice A shared resolver for .eth names gifted through ENS Fairy.
