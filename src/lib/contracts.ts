@@ -7,7 +7,7 @@ import { type Address, isAddressEqual, zeroAddress } from 'viem'
  */
 const FAIRY_RESOLVERS: Record<number, Address> = {
   1: zeroAddress,
-  11155111: zeroAddress,
+  11155111: '0x73568ddac8406A3d7D375755e04a40bE54d05e41',
 }
 
 export function getFairyResolver(chainId: number): Address | undefined {
