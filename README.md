@@ -13,6 +13,8 @@ Registrations on the ENSv2 `.eth` registrar are paid in USDC or DAI. A gift take
 3. **Commit** to the registration, which protects it from front-running.
 4. **Register** the name to the recipient after the 60 second waiting period.
 
+Wallets that support atomic batching ([EIP-5792](https://eips.ethereum.org/EIPS/eip-5792) `wallet_sendCalls`) get steps 1–3 as a single confirmation, so a gift takes two wallet interactions instead of four. The resolver address is predicted ahead of the deploy (the factory derives it from the sender and a salt), which lets the commit reference it in the same batch.
+
 Before the first transaction, the whole sequence is simulated with `eth_simulateV1`, so a gift that would fail is caught before any gas is spent. The commit secret is saved in `localStorage`, so a reload during the wait doesn't lose the reservation.
 
 ## Development
@@ -25,6 +27,10 @@ bun dev
 The app runs at [http://localhost:5173](http://localhost:5173) with the Worker running locally in `workerd`.
 
 RPC requests go through the Worker at `/rpc/:chainId`, which proxies read-only `eth_*` methods. It falls back to public RPCs. To use your own, copy `.dev.vars.example` to `.dev.vars` and fill in `MAINNET_RPC_URL` and/or `SEPOLIA_RPC_URL`.
+
+### Testing on Sepolia
+
+Sepolia's mock USDC and DAI can be minted by anyone. When connected to Sepolia, the app shows a "get 100 test USDC" link below the form, so testing only needs Sepolia ETH.
 
 ### Checking that registrations work
 

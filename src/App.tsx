@@ -5,6 +5,7 @@ import { cx, style } from 'zyzz'
 
 import { GiftDialog } from './components/GiftDialog'
 import { Nav } from './components/Nav'
+import { TestnetFaucet } from './components/TestnetFaucet'
 import { WalletModal } from './components/WalletModal'
 import { GithubIcon } from './components/icons'
 import { Button, Input, Spinner } from './components/ui'
@@ -16,7 +17,7 @@ import {
   type PaymentToken,
   formatTokenAmount,
 } from './lib/gift'
-import { isSupportedChain, mainnet } from './lib/wagmi'
+import { isSupportedChain, mainnet, sepolia } from './lib/wagmi'
 
 export function App() {
   const { isConnected, chainId: walletChainId } = useConnection()
@@ -219,6 +220,10 @@ export function App() {
             </Button>
           )}
         </form>
+
+        {isConnected && chainId === sepolia.id && (
+          <TestnetFaucet token={token} />
+        )}
       </main>
 
       <footer {...styles.footer()}>

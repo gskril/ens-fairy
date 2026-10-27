@@ -10,11 +10,15 @@ import {
   type Transport,
   erc20Abi,
 } from 'viem'
+import { getCode } from 'viem/actions'
 import {
+  getCapabilities,
   getConnectorClient,
   getPublicClient,
   readContract,
+  sendCalls,
   simulateContract,
+  waitForCallsStatus,
   waitForTransactionReceipt,
   writeContract,
 } from 'wagmi/actions'
@@ -28,11 +32,13 @@ import {
   formatTokenAmount,
   getDeployedResolver,
   getErrorMessage,
+  getGiftCalls,
   getGiftPrice,
   getPaymentTokenAddress,
   getRegisterWriteParameters,
   getRegistrarAddress,
   getRevertError,
+  predictResolverAddress,
   randomSalt,
   yearsToSeconds,
 } from '../lib/gift'
@@ -61,6 +67,8 @@ export type GiftState = {
   approvalSkipped?: boolean
   /** True while the gift is being simulated before any transactions */
   checking?: boolean
+  /** True when setup, approval, and commit are sent as one wallet batch */
+  batched?: boolean
   hashes: Partial<Record<StepId, Hash>>
 }
 
@@ -68,8 +76,23 @@ export type GiftState = {
 type Draft = {
   secret: Hex
   salt: string
+  /** Saved before the deploy is sent, so a reload can find the resolver */
+  predictedResolver?: Address
   resolver?: Address
+  /** EIP-5792 batch id, while a batched setup is in flight */
+  batchId?: string
   commitHash?: Hash
+}
+
+/** Whether the connected wallet can run calls atomically (EIP-5792). */
+async function supportsAtomicBatch(chainId: SupportedChainId) {
+  try {
+    const capabilities = await getCapabilities(config, { chainId })
+    const status = capabilities.atomic?.status
+    return status === 'supported' || status === 'ready'
+  } catch {
+    return false
+  }
 }
 
 const STEP_ORDER: Phase[] = [
@@ -157,7 +180,9 @@ export function useGiftFlow(params: GiftParams | undefined) {
     const wallet = (await getConnectorClient(config, {
       chainId: params.chainId,
     })) as Client<Transport, EnsChain, Account>
-    const client = getPublicClient(config, { chainId: params.chainId })
+    const client = getPublicClient(config, {
+      chainId: params.chainId,
+    }) as Client<Transport, EnsChain>
     return { wallet, client }
   }, [params])
 
@@ -171,6 +196,29 @@ export function useGiftFlow(params: GiftParams | undefined) {
         secret: draft.secret,
         resolverAddress: draft.resolver,
       }
+    },
+    [params]
+  )
+
+  /** Waits for a setup batch and records the resolver and commit it made. */
+  const finishBatch = useCallback(
+    async (draft: Draft, id: string) => {
+      if (!params) return
+      const result = await waitForCallsStatus(config, {
+        id,
+        timeout: 15 * 60_000,
+      })
+      const last = result.receipts?.at(-1)
+      draft.batchId = undefined
+
+      if (result.status !== 'success' || !last) {
+        saveDraft(params, draft)
+        throw new Error('The wallet batch failed')
+      }
+
+      draft.resolver ??= draft.predictedResolver
+      draft.commitHash = last.transactionHash
+      saveDraft(params, draft)
     },
     [params]
   )
@@ -238,107 +286,163 @@ export function useGiftFlow(params: GiftParams | undefined) {
       const token = getPaymentTokenAddress(wallet.chain, params.token)
       const registrar = getRegistrarAddress(wallet.chain)
       const draft = getDraft()
-
-      const price = await getGiftPrice(client, params)
-      const balance = await readContract(config, {
-        chainId: params.chainId,
-        address: token,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [account],
-      })
-
-      if (balance < price.total) {
-        const { symbol } = PAYMENT_TOKENS[params.token]
-        throw new Error(
-          `You need ${formatTokenAmount(price.total, params.token)} ${symbol} to register this name`
-        )
+      const setup = {
+        ...params,
+        account,
+        secret: draft.secret,
+        salt: BigInt(draft.salt),
       }
 
-      // Simulate the whole gift first so nobody pays gas for a doomed attempt
-      if (!draft.resolver) {
-        update({ checking: true })
-        let failure: unknown
-        try {
-          failure = await dryRunGift(client, {
-            ...params,
-            account,
-            secret: draft.secret,
-            salt: BigInt(draft.salt),
-          })
-        } catch (err) {
-          // Not every RPC supports eth_simulateV1. Carry on without it.
-          console.warn('Skipping gift simulation', err)
-        } finally {
-          update({ checking: false })
+      // A resolver deploy that landed before a reload: pick it back up
+      if (!draft.resolver && draft.predictedResolver) {
+        const code = await getCode(client, {
+          address: draft.predictedResolver,
+        })
+        if (code && code !== '0x') {
+          draft.resolver = draft.predictedResolver
+          saveDraft(params, draft)
         }
-        if (failure) throw failure
       }
 
-      // 1. Deploy a resolver owned by the recipient, pointing the name at them
-      if (!draft.resolver) {
-        update({ phase: 'resolver', txStatus: 'sign' })
-        const hash = await deployRecipientResolver(wallet, {
-          name,
-          recipient: params.recipient,
-          salt: BigInt(draft.salt),
-        })
-        setHash('resolver', hash)
-        update({ txStatus: 'confirm' })
-        const receipt = await waitForTransactionReceipt(config, {
-          hash,
-          chainId: params.chainId,
-        })
-        if (receipt.status !== 'success') {
-          throw new Error('Resolver setup failed')
-        }
-        draft.resolver = getDeployedResolver(receipt, {
-          chain: wallet.chain,
-          sender: account,
-        })
-        saveDraft(params, draft)
+      // A batch that was sent before a reload: wait for it to finish
+      if (draft.batchId && !draft.commitHash) {
+        update({ batched: true, phase: 'commit', txStatus: 'confirm' })
+        await finishBatch(draft, draft.batchId)
       }
 
-      // 2. Approve the registrar to take payment
-      update({ phase: 'approve', txStatus: undefined })
-      const allowance = await readContract(config, {
-        chainId: params.chainId,
-        address: token,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [account, registrar],
-      })
-
-      if (allowance < price.total) {
-        update({ txStatus: 'sign' })
-        const hash = await writeContract(config, {
+      if (!draft.commitHash) {
+        const price = await getGiftPrice(client, params)
+        const balance = await readContract(config, {
           chainId: params.chainId,
           address: token,
           abi: erc20Abi,
-          functionName: 'approve',
-          args: [registrar, price.total],
+          functionName: 'balanceOf',
+          args: [account],
         })
-        setHash('approve', hash)
-        update({ txStatus: 'confirm' })
-        const receipt = await waitForTransactionReceipt(config, {
-          hash,
+
+        if (balance < price.total) {
+          const { symbol } = PAYMENT_TOKENS[params.token]
+          throw new Error(
+            `You need ${formatTokenAmount(price.total, params.token)} ${symbol} to register this name`
+          )
+        }
+
+        // Simulate the whole gift first so nobody pays gas for a doomed attempt
+        if (!draft.resolver) {
+          update({ checking: true })
+          let failure: unknown
+          try {
+            failure = await dryRunGift(client, setup)
+          } catch (err) {
+            // Not every RPC supports eth_simulateV1. Carry on without it.
+            console.warn('Skipping gift simulation', err)
+          } finally {
+            update({ checking: false })
+          }
+          if (failure) throw failure
+
+          draft.predictedResolver = await predictResolverAddress(client, setup)
+          saveDraft(params, draft)
+        }
+
+        const allowance = await readContract(config, {
           chainId: params.chainId,
+          address: token,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [account, registrar],
         })
-        if (receipt.status !== 'success') throw new Error('Approval failed')
-      } else {
-        update({ approvalSkipped: true })
+        const needsApproval = allowance < price.total
+        const resolverAddress = draft.resolver ?? draft.predictedResolver!
+        const calls = getGiftCalls(client, {
+          ...setup,
+          resolverAddress,
+          approveAmount: price.total,
+        })
+
+        if (await supportsAtomicBatch(params.chainId)) {
+          // 1–3 in a single wallet confirmation
+          update({
+            batched: true,
+            phase: 'commit',
+            txStatus: 'sign',
+            approvalSkipped: !needsApproval,
+          })
+          const { id } = await sendCalls(config, {
+            chainId: params.chainId,
+            forceAtomic: true,
+            calls: [
+              ...(draft.resolver ? [] : [calls.resolver]),
+              ...(needsApproval ? [calls.approve] : []),
+              calls.commit,
+            ],
+          })
+          draft.batchId = id
+          saveDraft(params, draft)
+          update({ txStatus: 'confirm' })
+          await finishBatch(draft, id)
+        } else {
+          update({ batched: false })
+
+          // 1. Deploy a resolver owned by the recipient, pointing the name at them
+          if (!draft.resolver) {
+            update({ phase: 'resolver', txStatus: 'sign' })
+            const hash = await deployRecipientResolver(wallet, {
+              name,
+              recipient: params.recipient,
+              salt: setup.salt,
+            })
+            setHash('resolver', hash)
+            update({ txStatus: 'confirm' })
+            const receipt = await waitForTransactionReceipt(config, {
+              hash,
+              chainId: params.chainId,
+            })
+            if (receipt.status !== 'success') {
+              throw new Error('Resolver setup failed')
+            }
+            draft.resolver = getDeployedResolver(receipt, {
+              chain: wallet.chain,
+              sender: account,
+            })
+            saveDraft(params, draft)
+          }
+
+          // 2. Approve the registrar to take payment
+          update({ phase: 'approve', txStatus: undefined })
+          if (needsApproval) {
+            update({ txStatus: 'sign' })
+            const hash = await writeContract(config, {
+              chainId: params.chainId,
+              address: token,
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [registrar, price.total],
+            })
+            setHash('approve', hash)
+            update({ txStatus: 'confirm' })
+            const receipt = await waitForTransactionReceipt(config, {
+              hash,
+              chainId: params.chainId,
+            })
+            if (receipt.status !== 'success') {
+              throw new Error('Approval failed')
+            }
+          } else {
+            update({ approvalSkipped: true })
+          }
+
+          // 3. Commit to the registration (front-running protection)
+          update({ phase: 'commit', txStatus: 'sign' })
+          draft.commitHash = await commitName(wallet, registrationParams(draft))
+          saveDraft(params, draft)
+        }
       }
 
-      // 3. Commit to the registration (front-running protection)
-      update({ phase: 'commit', txStatus: 'sign' })
-      if (!draft.commitHash) {
-        draft.commitHash = await commitName(wallet, registrationParams(draft))
-        saveDraft(params, draft)
-      }
-      setHash('commit', draft.commitHash)
-      update({ txStatus: 'confirm' })
+      setHash('commit', draft.commitHash!)
+      update({ phase: 'commit', txStatus: 'confirm' })
       const receipt = await waitForTransactionReceipt(config, {
-        hash: draft.commitHash,
+        hash: draft.commitHash!,
         chainId: params.chainId,
       })
       if (receipt.status !== 'success') {
@@ -355,6 +459,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
       running.current = false
     }
   }, [
+    finishBatch,
     getClients,
     getDraft,
     params,
@@ -401,6 +506,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     const draft = loadDraft(params)
     setState({
       phase: draft?.commitHash ? 'wait' : 'idle',
+      batched: !!draft?.batchId || undefined,
       hashes: draft?.commitHash ? { commit: draft.commitHash } : {},
     })
   }, [params])

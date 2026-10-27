@@ -144,6 +144,13 @@ const STEPS: { id: StepId; title: (symbol: string) => string }[] = [
   { id: 'register', title: () => 'Complete registration' },
 ]
 
+/** With a wallet batch, records, approval, and commit are one confirmation */
+const BATCHED_STEPS: typeof STEPS = [
+  { id: 'commit', title: () => 'Set up and reserve the name' },
+  { id: 'wait', title: () => 'Wait a minute' },
+  { id: 'register', title: () => 'Complete registration' },
+]
+
 function Steps({
   state,
   params,
@@ -155,7 +162,7 @@ function Steps({
 }) {
   return (
     <ol {...styles.steps()}>
-      {STEPS.map((step, i) => {
+      {(state.batched ? BATCHED_STEPS : STEPS).map((step, i) => {
         const status = stepStatus(state, step.id)
         const hash = state.hashes[step.id]
 
@@ -171,6 +178,10 @@ function Steps({
               {status === 'active' &&
                 state.txStatus === 'sign' &&
                 'Confirm in wallet'}
+              {status === 'active' &&
+                state.txStatus === 'confirm' &&
+                !hash &&
+                'Confirming…'}
               {status === 'active' && state.txStatus === 'confirm' && hash && (
                 <a
                   href={`${explorerUrl(params.chainId)}/tx/${hash}`}

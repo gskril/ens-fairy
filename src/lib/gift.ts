@@ -1,7 +1,10 @@
 import { eacErrors } from '@ensdomains/ensjs-abi/v2/enhancedAccessControl'
 import { ethRegistrarErrors } from '@ensdomains/ensjs-abi/v2/ethRegistrar'
 import { permissionedResolverInitializeSnippet } from '@ensdomains/ensjs-abi/v2/permissionedResolver'
-import { proxyDeployedEventSnippet } from '@ensdomains/ensjs-abi/v2/verifiableFactory'
+import {
+  proxyDeployedEventSnippet,
+  verifiableFactoryDeployProxySnippet,
+} from '@ensdomains/ensjs-abi/v2/verifiableFactory'
 import {
   type ChainWithContracts,
   getChainContractAddress,
@@ -195,6 +198,126 @@ export function getRegisterWriteParameters(
   return registerNameWriteParameters(wallet, params)
 }
 
+export type GiftCall = { to: Address; data: Hex }
+
+export type GiftSetup = {
+  account: Address
+  label: string
+  recipient: Address
+  years: number
+  token: PaymentToken
+  secret: Hex
+  salt: bigint
+}
+
+/**
+ * Predicts the recipient's resolver address. The factory derives it from
+ * (sender, salt), so it's known before the deploy is sent. Reverts if a proxy
+ * is already deployed at that address.
+ */
+export async function predictResolverAddress(
+  client: Client<Transport, EnsChain>,
+  { account, label, recipient, salt }: GiftSetup
+) {
+  const call_ = resolverDeployCall(client, account, {
+    name: `${label}.eth`,
+    recipient,
+    salt,
+  })
+  const { data } = await call(client, { account, ...call_ })
+  if (!data) throw new Error('Could not predict resolver address')
+  return decodeFunctionResult({
+    abi: verifiableFactoryDeployProxySnippet,
+    functionName: 'deployProxy',
+    data,
+  })
+}
+
+function asSender(client: Client<Transport, EnsChain>, account: Address) {
+  // Write-parameter builders only read `chain` and `account` from the client
+  return { ...client, account: toAccount(account) } as Client<
+    Transport,
+    EnsChain,
+    Account
+  >
+}
+
+function resolverDeployCall(
+  client: Client<Transport, EnsChain>,
+  account: Address,
+  params: ResolverDeployParameters
+): GiftCall {
+  const deploy = deployVerifiableProxyWriteParameters(
+    asSender(client, account),
+    resolverDeployArgs(client.chain, params)
+  )
+  return {
+    to: deploy.address,
+    data: encodeFunctionData({
+      abi: deploy.abi,
+      functionName: deploy.functionName,
+      args: deploy.args,
+    }),
+  }
+}
+
+/**
+ * Builds every call in a gift as raw `{ to, data }`, so the same calls can be
+ * simulated, sent one at a time, or batched with `wallet_sendCalls`.
+ */
+export function getGiftCalls(
+  client: Client<Transport, EnsChain>,
+  setup: GiftSetup & { resolverAddress: Address; approveAmount: bigint }
+) {
+  const { account, label, recipient, years, token, secret, salt } = setup
+  const sender = asSender(client, account)
+  const paymentToken = getPaymentTokenAddress(client.chain, token)
+  const registration = {
+    label,
+    owner: recipient,
+    duration: yearsToSeconds(years),
+    secret,
+    resolverAddress: setup.resolverAddress,
+  }
+  const commit = commitNameWriteParameters(sender, registration)
+  const register = registerNameWriteParameters(sender, {
+    ...registration,
+    paymentToken,
+  })
+
+  return {
+    resolver: resolverDeployCall(client, account, {
+      name: `${label}.eth`,
+      recipient,
+      salt,
+    }),
+    approve: {
+      to: paymentToken,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [getRegistrarAddress(client.chain), setup.approveAmount],
+      }),
+    } satisfies GiftCall,
+    commit: {
+      to: commit.address,
+      data: encodeFunctionData({
+        abi: commit.abi,
+        functionName: commit.functionName,
+        args: commit.args,
+      }),
+    } satisfies GiftCall,
+    register: {
+      to: register.address,
+      data: encodeFunctionData({
+        abi: register.abi,
+        functionName: register.functionName,
+        args: register.args,
+      }),
+    } satisfies GiftCall,
+  }
+}
+
 /**
  * Replays the whole gift (resolver, approval, commit, and a register after the
  * waiting period) against current chain state with `eth_simulateV1`, so a gift
@@ -204,104 +327,26 @@ export function getRegisterWriteParameters(
  */
 export async function dryRunGift(
   client: Client<Transport, EnsChain>,
-  {
-    account,
-    label,
-    recipient,
-    years,
-    token,
-    secret,
-    salt,
-  }: {
-    account: Address
-    label: string
-    recipient: Address
-    years: number
-    token: PaymentToken
-    secret: Hex
-    salt: bigint
-  }
+  setup: GiftSetup
 ) {
-  const chain = client.chain
-  // Write-parameter builders only read `chain` and `account` from the client
-  const sender = {
-    ...client,
-    account: toAccount(account),
-  } as Client<Transport, EnsChain, Account>
-  const name = `${label}.eth`
-  const paymentToken = getPaymentTokenAddress(chain, token)
-  const registrar = getRegistrarAddress(chain)
-
-  const deploy = deployVerifiableProxyWriteParameters(
-    sender,
-    resolverDeployArgs(chain, { name, recipient, salt })
-  )
-  const deployData = encodeFunctionData({
-    abi: deploy.abi,
-    functionName: deploy.functionName,
-    args: deploy.args,
-  })
-
-  // The proxy address is deterministic for (sender, salt)
-  const { data } = await call(client, {
-    account,
-    to: deploy.address,
-    data: deployData,
-  })
-  if (!data) throw new Error('Could not predict resolver address')
-  const resolverAddress = decodeFunctionResult({
-    abi: deploy.abi,
-    functionName: deploy.functionName,
-    data,
-  })
-
-  const registration = {
-    label,
-    owner: recipient,
-    duration: yearsToSeconds(years),
-    secret,
+  const resolverAddress = await predictResolverAddress(client, setup)
+  const { total } = await getGiftPrice(client, setup)
+  const calls = getGiftCalls(client, {
+    ...setup,
     resolverAddress,
-  }
-  const commit = commitNameWriteParameters(sender, registration)
-  const register = registerNameWriteParameters(sender, {
-    ...registration,
-    paymentToken,
+    approveAmount: total,
   })
-  const { total } = await getGiftPrice(client, { label, years, token })
   const { timestamp } = await getBlock(client)
+  const from = (c: GiftCall) => ({ account: setup.account, ...c })
 
   const blocks = await simulateBlocks(client, {
     blocks: [
       {
-        calls: [
-          { account, to: deploy.address, data: deployData },
-          {
-            account,
-            to: paymentToken,
-            abi: erc20Abi,
-            functionName: 'approve',
-            args: [registrar, total],
-          },
-          {
-            account,
-            to: commit.address,
-            abi: commit.abi,
-            functionName: commit.functionName,
-            args: commit.args,
-          },
-        ],
+        calls: [from(calls.resolver), from(calls.approve), from(calls.commit)],
       },
       {
         blockOverrides: { time: timestamp + 600n },
-        calls: [
-          {
-            account,
-            to: register.address,
-            abi: register.abi,
-            functionName: register.functionName,
-            args: register.args,
-          },
-        ],
+        calls: [from(calls.register)],
       },
     ],
   })
