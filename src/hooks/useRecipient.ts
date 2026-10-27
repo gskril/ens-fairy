@@ -1,7 +1,7 @@
-import { getAddressRecord, getName } from '@ensdomains/ensjs/public'
-import { normalize } from '@ensdomains/ensjs/utils'
 import { useQuery } from '@tanstack/react-query'
 import { type Address, getAddress, isAddress } from 'viem'
+import { getEnsAddress, getEnsName } from 'viem/actions'
+import { normalize } from 'viem/ens'
 
 import type { SupportedChainId } from '../lib/wagmi'
 import { useDebounce } from './useDebounce'
@@ -36,8 +36,8 @@ export function useRecipient({
   const forward = useQuery({
     queryKey: ['address', chainId, name],
     queryFn: async () => {
-      const record = await getAddressRecord(client, { name: name! })
-      return record?.value ? getAddress(record.value) : null
+      const address = await getEnsAddress(client, { name: name! })
+      return address ? getAddress(address) : null
     },
     enabled: !!name,
   })
@@ -49,8 +49,8 @@ export function useRecipient({
   const reverse = useQuery({
     queryKey: ['name', chainId, address],
     queryFn: async () => {
-      const result = await getName(client, { address: address! })
-      return result?.match ? result.name : null
+      // Only returns a name whose forward resolution matches the address
+      return getEnsName(client, { address: address! })
     },
     enabled: !!address && isAddressInput,
   })

@@ -1,6 +1,6 @@
 import { getAvailable } from '@ensdomains/ensjs/public'
-import { normalize } from '@ensdomains/ensjs/utils'
 import { useQuery } from '@tanstack/react-query'
+import { normalize } from 'viem/ens'
 
 import { type PaymentToken, getGiftPrice } from '../lib/gift'
 import type { SupportedChainId } from '../lib/wagmi'

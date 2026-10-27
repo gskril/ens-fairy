@@ -1,7 +1,7 @@
-import { getName } from '@ensdomains/ensjs/public'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { getEnsName } from 'viem/actions'
 import { useConnection, useDisconnect } from 'wagmi'
 import { style } from 'zyzz'
 
@@ -32,8 +32,7 @@ export function usePrimaryName(address: `0x${string}` | undefined) {
   return useQuery({
     queryKey: ['primary-name', supportedChainId, address],
     queryFn: async () => {
-      const result = await getName(client, { address: address! })
-      return result?.match ? result.name : null
+      return getEnsName(client, { address: address! })
     },
     enabled: !!address,
   })

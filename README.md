@@ -29,7 +29,9 @@ The app runs at [http://localhost:5173](http://localhost:5173) with the Worker r
 
 FairyResolver addresses are hardcoded per chain in [`src/lib/contracts.ts`](src/lib/contracts.ts). A chain left at the zero address shows a "down for maintenance" screen instead of the form.
 
-The Worker reads two optional secrets, `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`, and falls back to public RPCs without them.
+The Worker reads two optional secrets, `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`, and falls back to [PublicNode](https://publicnode.com) RPCs without them.
+
+Security headers, including the Content Security Policy, are set in [`public/_headers`](public/_headers). `connect-src` and `img-src` allow any https origin because ENS resolution can call arbitrary CCIP Read gateways and avatars can live on any host.
 
 RPC requests go through the Worker at `/rpc/:chainId`, which proxies read-only `eth_*` methods. To use your own RPCs, copy `.dev.vars.example` to `.dev.vars` locally, and use `wrangler secret put` in production.
 
@@ -73,7 +75,7 @@ forge build
 forge test                                # forks Sepolia: real registrations, resolved through the Universal Resolver
 ```
 
-Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to a public RPC. To deploy:
+Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to PublicNode. The `mainnet` and `sepolia` RPC aliases in `foundry.toml` also point at PublicNode; pass `--rpc-url $SEPOLIA_RPC_URL` to use your own. To deploy:
 
 ```bash
 forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <keystore>   # or mainnet
