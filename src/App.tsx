@@ -128,7 +128,7 @@ export function App() {
             </span>
           </h1>
           <p {...styles.subtitle()}>
-            Register a .eth name directly to someone else's wallet.
+            Register a .eth name to someone else's wallet.
           </p>
         </header>
 
