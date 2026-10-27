@@ -25,10 +25,13 @@ import {ERC165} from "@openzeppelin/utils/introspection/ERC165.sol";
 /// registered, with no records written, and keeps following the owner if the
 /// name is transferred.
 ///
-/// Records belong to a registration, not just a name: they're keyed by the
-/// registry's resource ID, which changes when a name is registered again. If a
-/// name expires and someone else registers it, they start with no records
-/// instead of inheriting the previous owner's.
+/// Records are wiped when a name changes hands through expiry. Otherwise, if
+/// alice.eth expired and Bob registered it, he'd inherit Alice's records,
+/// including her ETH address, so funds sent to his name would go to her.
+/// To prevent that, records are stored under the registry's resource ID
+/// rather than the name. That ID changes each time the name is registered
+/// fresh, so a new registrant starts empty. It does not change on transfers,
+/// renewals, or role changes, so those keep their records, as in ENSv1.
 ///
 /// Setters take the DNS-encoded name (like the ENSv2 PermissionedResolver),
 /// so the ENS manager app recognizes them and can edit records. Reads only go
