@@ -11,7 +11,10 @@
     "typecheck": "tsc -b",
     "format": "prettier --write .",
     "cf-typegen": "wrangler types",
-    "check": "bun scripts/check.ts"
+    "check": "bun scripts/check.ts",
+    "contracts:build": "bun contracts/build.ts",
+    "contracts:test": "bun contracts/build.ts && bun contracts/test/FairyResolver.sepolia.ts",
+    "contracts:deploy": "bun contracts/deploy.ts"
   },
   "dependencies": {
     "@ensdomains/ensjs": "^5.2.6",
@@ -37,6 +40,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "prettier": "^3.9.10",
+    "solc": "0.8.30",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "wrangler": "^4.153.0"

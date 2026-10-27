@@ -38,6 +38,7 @@ import {
   getRegisterWriteParameters,
   getRegistrarAddress,
   getRevertError,
+  getSharedResolver,
   predictResolverAddress,
   randomSalt,
   yearsToSeconds,
@@ -69,6 +70,8 @@ export type GiftState = {
   checking?: boolean
   /** True when setup, approval, and commit are sent as one wallet batch */
   batched?: boolean
+  /** True when gifts use the shared FairyResolver, so no resolver is deployed */
+  sharedResolver?: boolean
   hashes: Partial<Record<StepId, Hash>>
 }
 
@@ -173,7 +176,11 @@ export function useGiftFlow(params: GiftParams | undefined) {
     if (!params) throw new Error('Missing gift details')
     let draft = loadDraft(params)
     if (!draft) {
-      draft = { secret: randomSecret(), salt: randomSalt().toString() }
+      draft = {
+        secret: randomSecret(),
+        salt: randomSalt().toString(),
+        resolver: getSharedResolver(params.chainId),
+      }
       saveDraft(params, draft)
     }
     return draft
@@ -331,8 +338,10 @@ export function useGiftFlow(params: GiftParams | undefined) {
           )
         }
 
-        // Simulate the whole gift first so nobody pays gas for a doomed attempt
-        if (!draft.resolver) {
+        // Simulate the whole gift first so nobody pays gas for a doomed attempt.
+        // Skipped once a per-name resolver exists, since its deploy can't rerun.
+        const sharedResolver = getSharedResolver(params.chainId)
+        if (!draft.resolver || draft.resolver === sharedResolver) {
           update({ checking: true })
           let failure: unknown
           try {
@@ -344,7 +353,9 @@ export function useGiftFlow(params: GiftParams | undefined) {
             update({ checking: false })
           }
           if (failure) throw failure
+        }
 
+        if (!draft.resolver) {
           draft.predictedResolver = await predictResolverAddress(client, setup)
           saveDraft(params, draft)
         }
@@ -511,6 +522,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     setState({
       phase: draft?.commitHash ? 'wait' : 'idle',
       batched: !!draft?.batchId || undefined,
+      sharedResolver: !!getSharedResolver(params.chainId) || undefined,
       hashes: draft?.commitHash ? { commit: draft.commitHash } : {},
     })
   }, [params])

@@ -37,6 +37,7 @@ import {
   encodeFunctionData,
   erc20Abi,
   formatUnits,
+  isAddress,
   isAddressEqual,
   parseAbi,
   parseEventLogs,
@@ -56,6 +57,22 @@ export type EnsChain = ChainWithContracts<
 >
 
 export const SECONDS_PER_YEAR = 31_536_000
+
+/**
+ * Shared FairyResolver deployments (contracts/src/FairyResolver.sol), set at
+ * build time with VITE_FAIRY_RESOLVER_<chainId>. When a chain has one, gifts
+ * point names at it and skip deploying a resolver per name: the name resolves
+ * to its owner until they set records.
+ */
+const SHARED_RESOLVERS: Partial<Record<number, string | undefined>> = {
+  1: import.meta.env.VITE_FAIRY_RESOLVER_1,
+  11155111: import.meta.env.VITE_FAIRY_RESOLVER_11155111,
+}
+
+export function getSharedResolver(chainId: number): Address | undefined {
+  const address = SHARED_RESOLVERS[chainId]
+  return address && isAddress(address) ? address : undefined
+}
 
 export const PAYMENT_TOKENS = {
   usdc: { symbol: 'USDC', decimals: 6 },
@@ -329,7 +346,9 @@ export async function dryRunGift(
   client: Client<Transport, EnsChain>,
   setup: GiftSetup
 ) {
-  const resolverAddress = await predictResolverAddress(client, setup)
+  const sharedResolver = getSharedResolver(client.chain.id)
+  const resolverAddress =
+    sharedResolver ?? (await predictResolverAddress(client, setup))
   const { total } = await getGiftPrice(client, setup)
   const calls = getGiftCalls(client, {
     ...setup,
@@ -342,7 +361,11 @@ export async function dryRunGift(
   const blocks = await simulateBlocks(client, {
     blocks: [
       {
-        calls: [from(calls.resolver), from(calls.approve), from(calls.commit)],
+        calls: [
+          ...(sharedResolver ? [] : [from(calls.resolver)]),
+          from(calls.approve),
+          from(calls.commit),
+        ],
       },
       {
         blockOverrides: { time: timestamp + 600n },

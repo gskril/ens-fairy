@@ -167,50 +167,58 @@ function Steps({
 }) {
   return (
     <ol {...styles.steps()}>
-      {(state.batched ? BATCHED_STEPS : STEPS).map((step, i) => {
-        const status = stepStatus(state, step.id)
-        const hash = state.hashes[step.id]
+      {(state.batched ? BATCHED_STEPS : STEPS)
+        .filter((step) => !(state.sharedResolver && step.id === 'resolver'))
+        .map((step, i) => {
+          const status = stepStatus(state, step.id)
+          const hash = state.hashes[step.id]
 
-        return (
-          <li key={step.id} {...styles.step({ status })}>
-            <StepIcon status={status} index={i + 1} />
-            <span {...styles.stepTitle()}>{step.title(symbol)}</span>
-            <span {...styles.stepMeta()}>
-              {status === 'skipped' && 'Already approved'}
-              {status === 'active' && step.id === 'wait' && (
-                <Countdown readyAt={state.readyAt} ready={state.ready} />
-              )}
-              {status === 'active' &&
-                state.txStatus === 'sign' &&
-                'Confirm in wallet'}
-              {status === 'active' &&
-                state.txStatus === 'confirm' &&
-                !hash &&
-                'Confirming…'}
-              {status === 'active' && state.txStatus === 'confirm' && hash && (
-                <a
-                  href={`${explorerUrl(params.chainId)}/tx/${hash}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  {...styles.link()}
-                >
-                  Confirming…
-                </a>
-              )}
-              {status === 'done' && hash && (
-                <a
-                  href={`${explorerUrl(params.chainId)}/tx/${hash}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  {...styles.link()}
-                >
-                  View
-                </a>
-              )}
-            </span>
-          </li>
-        )
-      })}
+          return (
+            <li key={step.id} {...styles.step({ status })}>
+              <StepIcon status={status} index={i + 1} />
+              <span {...styles.stepTitle()}>
+                {state.sharedResolver && step.id === 'commit'
+                  ? 'Reserve the name'
+                  : step.title(symbol)}
+              </span>
+              <span {...styles.stepMeta()}>
+                {status === 'skipped' && 'Already approved'}
+                {status === 'active' && step.id === 'wait' && (
+                  <Countdown readyAt={state.readyAt} ready={state.ready} />
+                )}
+                {status === 'active' &&
+                  state.txStatus === 'sign' &&
+                  'Confirm in wallet'}
+                {status === 'active' &&
+                  state.txStatus === 'confirm' &&
+                  !hash &&
+                  'Confirming…'}
+                {status === 'active' &&
+                  state.txStatus === 'confirm' &&
+                  hash && (
+                    <a
+                      href={`${explorerUrl(params.chainId)}/tx/${hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      {...styles.link()}
+                    >
+                      Confirming…
+                    </a>
+                  )}
+                {status === 'done' && hash && (
+                  <a
+                    href={`${explorerUrl(params.chainId)}/tx/${hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    {...styles.link()}
+                  >
+                    View
+                  </a>
+                )}
+              </span>
+            </li>
+          )
+        })}
     </ol>
   )
 }
