@@ -166,7 +166,6 @@ export function App() {
               {...styles.pending()}
             >
               <span>
-                Unfinished gift:{' '}
                 <span {...styles.pendingName()}>{pending.label}.eth</span> to{' '}
                 <span {...styles.pendingAddress()}>
                   {shortenAddress(pending.recipient)}
