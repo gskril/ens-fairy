@@ -5,16 +5,17 @@
  *   bun run check            # mainnet
  *   bun run check sepolia    # sepolia (needs an account holding test USDC)
  *
- * Set CHECK_ACCOUNT to simulate from a specific address that holds USDC. Uses
- * VITE_FAIRY_RESOLVER_<chainId> as the resolver when set; the registrar
- * doesn't check it, so any address works for the dry run.
+ * Set CHECK_ACCOUNT to simulate from a specific address that holds USDC. Uses the
+ * FairyResolver from src/lib/contracts.ts when set; the registrar doesn't
+ * check it, so any address works for the dry run.
  */
 import { addEnsContracts } from '@ensdomains/ensjs'
 import { randomSecret } from '@ensdomains/ensjs/utils'
 import { type Address, createClient, http, zeroAddress } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 
-import { dryRunGift, getErrorMessage, getFairyResolver } from '../src/lib/gift'
+import { getFairyResolver } from '../src/lib/contracts'
+import { dryRunGift, getErrorMessage } from '../src/lib/gift'
 
 const isSepolia = process.argv[2] === 'sepolia'
 const chain = addEnsContracts(isSepolia ? sepolia : mainnet)

@@ -20,22 +20,16 @@ Before the first transaction, the whole sequence is simulated with `eth_simulate
 
 ```bash
 bun install
-cp .env.example .env   # then fill in the FairyResolver addresses
 bun dev
 ```
 
 The app runs at [http://localhost:5173](http://localhost:5173) with the Worker running locally in `workerd`.
 
-### Environment variables
+### Configuration
 
-| Variable | Where | Required |
-| --- | --- | --- |
-| `VITE_FAIRY_RESOLVER_1` | Build time (`.env` or CI) | For gifting on mainnet |
-| `VITE_FAIRY_RESOLVER_11155111` | Build time (`.env` or CI) | For gifting on Sepolia |
-| `MAINNET_RPC_URL` | Worker secret (`.dev.vars` locally) | No, falls back to a public RPC |
-| `SEPOLIA_RPC_URL` | Worker secret (`.dev.vars` locally) | No, falls back to a public RPC |
+FairyResolver addresses are hardcoded per chain in [`src/lib/contracts.ts`](src/lib/contracts.ts). A chain left at the zero address shows a "down for maintenance" screen instead of the form.
 
-The resolver addresses are baked into the frontend by Vite, so they have to be set when running `bun run build` / `bun run deploy`, not as Worker secrets. They're public, so committing them in `.env` is fine. On a chain without one, the app shows a "down for maintenance" screen instead of the form.
+The Worker reads two optional secrets, `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`, and falls back to public RPCs without them.
 
 RPC requests go through the Worker at `/rpc/:chainId`, which proxies read-only `eth_*` methods. To use your own RPCs, copy `.dev.vars.example` to `.dev.vars` locally, and use `wrangler secret put` in production.
 
@@ -57,7 +51,7 @@ This dry-runs a full gift against live chain state and reports whether it would 
 ```bash
 bunx wrangler secret put MAINNET_RPC_URL   # optional
 bunx wrangler secret put SEPOLIA_RPC_URL   # optional
-bun run deploy                             # with VITE_FAIRY_RESOLVER_* set
+bun run deploy
 ```
 
 ## FairyResolver
@@ -85,7 +79,7 @@ Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to a public RPC. To depl
 forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <keystore>   # or mainnet
 ```
 
-Then set `VITE_FAIRY_RESOLVER_11155111` (or `VITE_FAIRY_RESOLVER_1`) to the printed address and rebuild. Until it's set, that chain shows the maintenance screen.
+Then set that chain's address in [`src/lib/contracts.ts`](src/lib/contracts.ts). Until it's set, that chain shows the maintenance screen.
 
 ## Brand assets
 

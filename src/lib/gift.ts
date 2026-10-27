@@ -21,7 +21,6 @@ import {
   encodeFunctionData,
   erc20Abi,
   formatUnits,
-  isAddress,
   parseAbi,
 } from 'viem'
 import { toAccount } from 'viem/accounts'
@@ -37,22 +36,6 @@ export type EnsChain = ChainWithContracts<
 >
 
 export const SECONDS_PER_YEAR = 31_536_000
-
-/**
- * FairyResolver deployments (contracts/src/FairyResolver.sol), set at build
- * time with VITE_FAIRY_RESOLVER_<chainId>. Every gifted name points at it and
- * resolves to its owner until they set records. Gifting is paused on chains
- * without one.
- */
-const FAIRY_RESOLVERS: Partial<Record<number, string | undefined>> = {
-  1: import.meta.env.VITE_FAIRY_RESOLVER_1,
-  11155111: import.meta.env.VITE_FAIRY_RESOLVER_11155111,
-}
-
-export function getFairyResolver(chainId: number): Address | undefined {
-  const address = FAIRY_RESOLVERS[chainId]
-  return address && isAddress(address) ? address : undefined
-}
 
 export const PAYMENT_TOKENS = {
   usdc: { symbol: 'USDC', decimals: 6 },

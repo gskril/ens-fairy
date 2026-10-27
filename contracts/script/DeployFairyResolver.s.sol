@@ -28,10 +28,7 @@ contract DeployFairyResolver is Script {
         console.log("FairyResolver:", address(resolver));
         console.log(
             string.concat(
-                "VITE_FAIRY_RESOLVER_",
-                vm.toString(block.chainid),
-                "=",
-                vm.toString(address(resolver))
+                "Set chain ", vm.toString(block.chainid), " in src/lib/contracts.ts to this address"
             )
         );
     }

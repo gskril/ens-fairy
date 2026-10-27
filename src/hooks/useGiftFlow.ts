@@ -22,6 +22,7 @@ import {
   writeContract,
 } from 'wagmi/actions'
 
+import { getFairyResolver } from '../lib/contracts'
 import {
   type EnsChain,
   PAYMENT_TOKENS,
@@ -29,7 +30,6 @@ import {
   dryRunGift,
   formatTokenAmount,
   getErrorMessage,
-  getFairyResolver,
   getGiftCalls,
   getGiftPrice,
   getPaymentTokenAddress,

@@ -12,11 +12,11 @@ import { Button, Input, Spinner } from './components/ui'
 import type { GiftParams } from './hooks/useGiftFlow'
 import { useName } from './hooks/useName'
 import { useRecipient } from './hooks/useRecipient'
+import { getFairyResolver } from './lib/contracts'
 import {
   PAYMENT_TOKENS,
   type PaymentToken,
   formatTokenAmount,
-  getFairyResolver,
 } from './lib/gift'
 import {
   type SupportedChainId,
