@@ -159,13 +159,15 @@ export function App() {
                 <span {...styles.pendingName()}>{pending.label}.eth</span> to{' '}
                 {shortenAddress(pending.recipient)}
               </span>
-              <Button
-                size="small"
-                tone="secondary"
-                onClick={() => resumeGift(pending)}
-              >
-                Resume
-              </Button>
+              <div {...styles.pendingAction()}>
+                <Button
+                  size="small"
+                  tone="secondary"
+                  onClick={() => resumeGift(pending)}
+                >
+                  Resume
+                </Button>
+              </div>
             </div>
           ))}
 
@@ -471,6 +473,8 @@ namespace styles {
     color: 'var(--text-secondary)',
     fontWeight: 500,
   })
+
+  export const pendingAction = style({ flex: 'none' })
 
   export const pendingName = style({
     color: 'var(--text)',
