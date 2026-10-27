@@ -9,8 +9,28 @@ const FALLBACK_RPCS: Record<string, string> = {
   '11155111': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
 
-// Only proxy read methods the app needs. Signing happens in the user's wallet.
-const ALLOWED_METHOD = /^(eth_|net_version$)/
+// Only proxy read methods. Transactions are signed and sent by the user's
+// wallet over its own RPC, so nothing that writes goes through here.
+const ALLOWED_METHODS = new Set([
+  'eth_blockNumber',
+  'eth_call',
+  'eth_chainId',
+  'eth_estimateGas',
+  'eth_feeHistory',
+  'eth_gasPrice',
+  'eth_getBalance',
+  'eth_getBlockByHash',
+  'eth_getBlockByNumber',
+  'eth_getCode',
+  'eth_getLogs',
+  'eth_getStorageAt',
+  'eth_getTransactionByHash',
+  'eth_getTransactionCount',
+  'eth_getTransactionReceipt',
+  'eth_maxPriorityFeePerGas',
+  'eth_simulateV1',
+  'net_version',
+])
 
 function rpcUrl(env: Env, chainId: string) {
   if (chainId === '1') return env.MAINNET_RPC_URL || FALLBACK_RPCS['1']
@@ -41,7 +61,7 @@ async function handleRpc(request: Request, env: Env, chainId: string) {
       typeof call === 'object' &&
       call !== null &&
       typeof (call as { method?: unknown }).method === 'string' &&
-      ALLOWED_METHOD.test((call as { method: string }).method)
+      ALLOWED_METHODS.has((call as { method: string }).method)
   )
   if (!allowed) return new Response('Method not allowed', { status: 403 })
 

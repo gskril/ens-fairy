@@ -113,8 +113,8 @@ export function stepStatus(state: GiftState, step: StepId) {
   return 'pending'
 }
 
-function draftKey({ chainId, label, recipient, years }: GiftParams) {
-  return `ens-fairy:gift:${chainId}:${label}:${recipient.toLowerCase()}:${years}`
+function draftKey({ chainId, label, recipient, years, token }: GiftParams) {
+  return `ens-fairy:gift:${chainId}:${label}:${recipient.toLowerCase()}:${years}:${token}`
 }
 
 function loadDraft(params: GiftParams): Draft | undefined {
@@ -271,6 +271,42 @@ export function useGiftFlow(params: GiftParams | undefined) {
     [getClients, params, registrationParams, update]
   )
 
+  /**
+   * Approves the registrar again if its allowance dropped after the commit,
+   * e.g. another gift spent it or it was revoked. A no-op otherwise.
+   */
+  const topUpAllowance = useCallback(async () => {
+    if (!params) return
+    const { wallet, client } = await getClients()
+    const token = getPaymentTokenAddress(wallet.chain, params.token)
+    const registrar = getRegistrarAddress(wallet.chain)
+    const { total } = await getGiftPrice(client, params)
+    const allowance = await readContract(config, {
+      chainId: params.chainId,
+      address: token,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [wallet.account.address, registrar],
+    })
+    if (allowance >= total) return
+
+    update({ txStatus: 'sign' })
+    const hash = await writeContract(config, {
+      chainId: params.chainId,
+      address: token,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [registrar, total],
+    })
+    update({ txStatus: 'confirm' })
+    const receipt = await waitForTransactionReceipt(config, {
+      hash,
+      chainId: params.chainId,
+    })
+    if (receipt.status !== 'success') throw new Error('Approval failed')
+    update({ txStatus: undefined })
+  }, [getClients, params, update])
+
   /** Runs every step up to the waiting period, resuming saved progress. */
   const start = useCallback(async () => {
     if (!params || running.current) return
@@ -402,7 +438,9 @@ export function useGiftFlow(params: GiftParams | undefined) {
         throw new Error('Commit transaction failed')
       }
 
-      // 3. Wait for the commitment to mature
+      // 3. Wait for the commitment to mature, with enough allowance to pay
+      update({ phase: 'wait', txStatus: undefined })
+      await topUpAllowance()
       await waitUntilReady(draft)
     } catch (err) {
       update({ error: getErrorMessage(err) })
@@ -416,6 +454,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     params,
     registrationParams,
     setHash,
+    topUpAllowance,
     update,
     waitUntilReady,
   ])
@@ -429,6 +468,8 @@ export function useGiftFlow(params: GiftParams | undefined) {
     try {
       const { wallet } = await getClients()
       const draft = getDraft()
+      await topUpAllowance()
+      update({ txStatus: 'sign' })
       const hash = await registerName(wallet, {
         ...registrationParams(draft),
         paymentToken: getPaymentTokenAddress(wallet.chain, params.token),
@@ -449,7 +490,15 @@ export function useGiftFlow(params: GiftParams | undefined) {
     } finally {
       running.current = false
     }
-  }, [getClients, getDraft, params, registrationParams, setHash, update])
+  }, [
+    getClients,
+    getDraft,
+    params,
+    registrationParams,
+    setHash,
+    topUpAllowance,
+    update,
+  ])
 
   // Resume a gift that was committed before the page was closed
   useEffect(() => {
