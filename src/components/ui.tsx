@@ -215,7 +215,8 @@ namespace styles {
     backgroundColor: 'transparent',
     // Names and addresses read best in mono, like the brand's name pills
     fontFamily: 'var(--font-mono)',
-    fontSize: '0.9375rem',
+    // 16px or larger stops iOS Safari from zooming in on focus
+    fontSize: '1rem',
     fontWeight: 400,
     '::placeholder': { color: 'var(--text-tertiary)' },
   })
@@ -226,7 +227,7 @@ namespace styles {
     paddingLeft: '0.5rem',
     color: 'var(--text-secondary)',
     fontFamily: 'var(--font-mono)',
-    fontSize: '0.9375rem',
+    fontSize: '1rem',
     whiteSpace: 'nowrap',
   })
 
