@@ -8,6 +8,8 @@
     "run_worker_first": ["/rpc/*"],
   },
   "observability": { "enabled": true },
+  // Required by `wrangler preview`, which Workers Builds runs for non-production branches
+  "previews": {},
   // Optional secrets (`wrangler secret put <NAME>`) for private RPC endpoints:
   //   MAINNET_RPC_URL, SEPOLIA_RPC_URL
 }
