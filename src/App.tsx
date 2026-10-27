@@ -504,6 +504,7 @@ namespace styles {
 
   export const dismiss = style({
     display: 'flex',
+    flex: 'none',
     alignItems: 'center',
     justifyContent: 'center',
     width: '2.5rem',
