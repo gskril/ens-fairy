@@ -162,6 +162,8 @@ namespace styles {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
+    // Match the Connect button so the nav doesn't jump when a wallet reconnects
+    height: '2.5rem',
     maxWidth: '13rem',
     padding: '0.25rem 1rem 0.25rem 0.25rem',
     border: '1px solid var(--border)',
