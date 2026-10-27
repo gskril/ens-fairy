@@ -1,15 +1,22 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useConnection, useSwitchChain } from 'wagmi'
 import { cx, style } from 'zyzz'
 
+import { shortenAddress } from './components/Avatar'
 import { GiftDialog } from './components/GiftDialog'
 import { Nav } from './components/Nav'
 import { TestnetFaucet } from './components/TestnetFaucet'
 import { WalletModal } from './components/WalletModal'
-import { GithubIcon } from './components/icons'
+import { CloseIcon, GithubIcon } from './components/icons'
 import { Button, Input, Spinner } from './components/ui'
-import type { GiftParams } from './hooks/useGiftFlow'
+import {
+  type GiftParams,
+  discardGift,
+  findPendingGifts,
+  isSameGift,
+  subscribeToGifts,
+} from './hooks/useGiftFlow'
 import { useName } from './hooks/useName'
 import { useRecipient } from './hooks/useRecipient'
 import { getFairyResolver } from './lib/contracts'
@@ -50,6 +57,28 @@ export function App() {
     price?: bigint
   }>()
   const [giftOpen, setGiftOpen] = useState(false)
+
+  // Committed gifts that can be resumed: ones from before a reload, or one
+  // still running after its dialog was closed. Re-read when saved gifts change.
+  const [giftsVersion, setGiftsVersion] = useState(0)
+  useEffect(() => subscribeToGifts(() => setGiftsVersion((n) => n + 1)), [])
+  const pendingGifts = useMemo(
+    () => (giftOpen ? [] : findPendingGifts(chainId)),
+    [chainId, giftOpen, giftsVersion]
+  )
+
+  function resumeGift(params: GiftParams) {
+    if (!isConnected) {
+      setWalletModalOpen(true)
+      return
+    }
+    // Reopening the gift that's already loaded keeps its progress, e.g. a
+    // countdown that kept running after the dialog was closed
+    setGift((current) =>
+      current && isSameGift(current.params, params) ? current : { params }
+    )
+    setGiftOpen(true)
+  }
 
   const years = Number(yearsInput)
   const invalidYears =
@@ -131,6 +160,39 @@ export function App() {
             Register a .eth name to someone else's wallet.
           </p>
         </header>
+
+        {!paused &&
+          pendingGifts.map((pending) => (
+            <div
+              key={`${pending.label}:${pending.recipient}`}
+              {...styles.pending()}
+            >
+              <span>
+                <span {...styles.pendingName()}>{pending.label}.eth</span> to{' '}
+                <span {...styles.pendingAddress()}>
+                  {shortenAddress(pending.recipient)}
+                </span>
+              </span>
+              <div {...styles.pendingAction()}>
+                <Button
+                  size="small"
+                  tone="secondary"
+                  onClick={() => resumeGift(pending)}
+                >
+                  Resume
+                </Button>
+                <button
+                  type="button"
+                  aria-label={`Dismiss unfinished gift of ${pending.label}.eth`}
+                  title="Dismiss"
+                  onClick={() => discardGift(pending)}
+                  {...styles.dismiss()}
+                >
+                  <CloseIcon size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
 
         {paused ? (
           <Maintenance
@@ -421,6 +483,51 @@ namespace styles {
   })
 
   export const available = style({ color: 'var(--green)' })
+
+  export const pending = style({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    padding: '0.75rem 0.75rem 0.75rem 1rem',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    backgroundColor: 'var(--surface)',
+    color: 'var(--text-secondary)',
+    fontWeight: 500,
+    lineHeight: 1.25,
+  })
+
+  export const pendingAction = style({
+    display: 'flex',
+    flex: 'none',
+    gap: '0.5rem',
+  })
+
+  export const dismiss = style({
+    display: 'flex',
+    flex: 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '2.5rem',
+    height: '2.5rem',
+    border: 'none',
+    borderRadius: '0.75rem',
+    backgroundColor: 'var(--surface-secondary)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    transitionProperty: 'color, background-color',
+    transitionDuration: '150ms',
+    ':hover': { backgroundColor: 'var(--border)', color: 'var(--text)' },
+  })
+
+  export const pendingAddress = style({ whiteSpace: 'nowrap' })
+
+  export const pendingName = style({
+    color: 'var(--text)',
+    fontFamily: 'var(--font-mono)',
+    overflowWrap: 'anywhere',
+  })
 
   export const maintenance = style({
     alignItems: 'center',

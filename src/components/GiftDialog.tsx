@@ -1,6 +1,5 @@
 import confetti from 'canvas-confetti'
 import { type ReactNode, useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import { cx, style, variants } from 'zyzz'
 
 import {
@@ -39,7 +38,6 @@ export function GiftDialog({
 }: GiftDialogProps) {
   const { state, start, register, retry } = useGiftFlow(params)
   const isDone = state.phase === 'done'
-  const inProgress = state.phase !== 'idle' && !isDone && !state.error
 
   useEffect(() => {
     if (!isDone) return
@@ -59,13 +57,7 @@ export function GiftDialog({
   return (
     <Dialog
       open={open}
-      onClose={() => {
-        if (inProgress && state.txStatus) {
-          toast('Keep this open until the transaction confirms')
-          return
-        }
-        onClose()
-      }}
+      onClose={onClose}
       title={isDone ? `Gifted ${name}` : `Gift ${name}`}
       description={
         isDone

@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useRef } from 'react'
 import { style } from 'zyzz'
 import { keyframes } from 'zyzz/web'
 
+import { CloseIcon } from './icons'
+
 const rise = keyframes({
   from: { opacity: 0, transform: 'translateY(1rem) scale(0.98)' },
   to: { opacity: 1, transform: 'translateY(0) scale(1)' },
@@ -56,14 +58,7 @@ export function Dialog({
             onClick={onClose}
             {...styles.close()}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M1 1l12 12M13 1L1 13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <CloseIcon />
           </button>
           <h2 {...styles.title()}>{title}</h2>
           {description && <p {...styles.description()}>{description}</p>}
