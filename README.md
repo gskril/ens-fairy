@@ -55,11 +55,11 @@ bun run deploy
 
 [`contracts/src/FairyResolver.sol`](contracts/src/FairyResolver.sol) is an optional shared resolver for gifted names. One deployment serves every name, so a gift doesn't deploy a resolver of its own (about 267k gas saved per gift on mainnet).
 
-- **Owner-controlled.** Only the name's current owner in the ENSv2 .eth registry, or an operator they've approved on that registry (the name NFT's `setApprovalForAll`), can write records. The resolver has no approval system of its own. There's no admin and no upgrade path.
+- **A v2 resolver.** It implements the same `IRecordResolver` interface as ENSv2's `PermissionedResolver`: name-based setters (`setAddress`, `setText`, `setContenthash`, `setData`, `setABI`, `setInterface`, `setName`, `multicall`), the same `resolve` profiles (including resolve-multicall and the ENSIP-19 default address), and the same `Linked` / `*Updated(recordId, …)` / `Cleared` events, so the ENS manager and v2 indexers treat it like any other v2 resolver. It has no EAC roles.
+- **Owner-controlled.** Records can be written by the name's current owner in the ENSv2 .eth registry, or by accounts the owner approves here, as in `PublicResolverV2`: an operator for all their names (`setApprovalForAll`) or a delegate for one (`approve`). Approvals belong to the owner, so they stop applying when a name changes hands. There's no admin and no upgrade path.
 - **Resolves to the owner by default.** Until the owner sets one, the ETH address is the name's current owner, so a gifted name works the moment it's registered and follows the name if it's transferred.
-- **Records belong to a registration.** They're keyed by the registry's resource ID, which changes when a name is registered again, so if a name expires and someone else registers it they start clean. Transfers and renewals keep records.
-- **Editable in the ENS manager.** Setters take the DNS-encoded name (`setAddress(bytes,uint256,bytes)`, `setText`, `setContenthash`, `clearRecords`, `multicall`), which the manager detects and writes through.
-- **Basic profiles only.** It serves addresses, text records and contenthash through ENSIP-10 `resolve`, for second-level .eth names. No EAC roles.
+- **Records belong to a registration.** Each registration gets its own record, found through the registry's resource ID, which changes when a name is registered again. If a name expires and someone else registers it, they start clean. Transfers and renewals keep records. `clearRecords` starts the record over.
+- **Second-level .eth names only.**
 
 It's a [Foundry](https://getfoundry.sh) project that builds on ENS's own code: [contracts-v2](https://github.com/ensdomains/contracts-v2) is a submodule pinned to `v2-mainnet-deployment-1`, and the resolver profile interfaces, `NameCoder`, `ENSIP19` and the registry interfaces all come from it (and the ens-contracts and OpenZeppelin versions it pins).
 

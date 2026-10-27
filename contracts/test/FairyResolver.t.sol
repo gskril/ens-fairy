@@ -3,12 +3,24 @@ pragma solidity ^0.8.24;
 
 import {IAddrResolver} from "@ens/resolvers/profiles/IAddrResolver.sol";
 import {IAddressResolver} from "@ens/resolvers/profiles/IAddressResolver.sol";
+import {IABIResolver} from "@ens/resolvers/profiles/IABIResolver.sol";
+import {IDataResolver} from "@ens/resolvers/profiles/IDataResolver.sol";
+import {IHasAddressResolver} from "@ens/resolvers/profiles/IHasAddressResolver.sol";
+import {IInterfaceResolver} from "@ens/resolvers/profiles/IInterfaceResolver.sol";
+import {INameResolver} from "@ens/resolvers/profiles/INameResolver.sol";
 import {ITextResolver} from "@ens/resolvers/profiles/ITextResolver.sol";
+import {IMulticallable} from "@ens/resolvers/IMulticallable.sol";
+import {ResolverFeatures} from "@ens/resolvers/ResolverFeatures.sol";
 import {IUniversalResolver} from "@ens/universalResolver/IUniversalResolver.sol";
+import {COIN_TYPE_DEFAULT} from "@ens/utils/ENSIP19.sol";
 import {NameCoder} from "@ens/utils/NameCoder.sol";
 import {IETHRegistrar} from "@ens/v2/registrar/interfaces/IETHRegistrar.sol";
 import {IPermissionedRegistry} from "@ens/v2/registry/interfaces/IPermissionedRegistry.sol";
 import {IRegistry} from "@ens/v2/registry/interfaces/IRegistry.sol";
+import {IRecordResolver} from "@ens/v2/resolver/interfaces/IRecordResolver.sol";
+import {IAddressSetter} from "@ens/v2/resolver/interfaces/setters/IAddressSetter.sol";
+import {IContenthashSetter} from "@ens/v2/resolver/interfaces/setters/IContenthashSetter.sol";
+import {ITextSetter} from "@ens/v2/resolver/interfaces/setters/ITextSetter.sol";
 import {LibLabel} from "@ens/v2/utils/LibLabel.sol";
 import {IERC1155} from "@openzeppelin/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
@@ -44,6 +56,7 @@ contract FairyResolverTest is Test {
     address stranger = makeAddr("stranger");
     address operator = makeAddr("operator");
     address elsewhere = makeAddr("elsewhere");
+    address delegate = makeAddr("delegate");
 
     string label;
     bytes name;
@@ -86,10 +99,44 @@ contract FairyResolverTest is Test {
     // ENS manager compatibility
     ////////////////////////////////////////////////////////////////////////
 
-    function test_advertisesNameBasedSetters() public view {
+    function test_advertisesSameInterfacesAsV2Resolvers() public view {
+        // What the ENS manager probes for to pick name-based setters
         assertTrue(resolver.supportsInterface(bytes4(keccak256("setAddress(bytes,uint256,bytes)"))));
+        assertTrue(resolver.supportsInterface(type(IAddressSetter).interfaceId));
+        assertTrue(resolver.supportsInterface(type(ITextSetter).interfaceId));
+        assertTrue(resolver.supportsInterface(type(IContenthashSetter).interfaceId));
+        assertTrue(resolver.supportsInterface(type(IMulticallable).interfaceId));
         assertTrue(resolver.supportsInterface(0x9061b923)); // IExtendedResolver
         assertTrue(resolver.supportsInterface(0x01ffc9a7)); // IERC165
+        assertTrue(resolver.supportsFeature(ResolverFeatures.RESOLVE_MULTICALL));
+    }
+
+    function test_emitsV2RecordEvents() public {
+        _gift(gifter, recipient);
+        uint256 recordId = resolver.getRecordCount() + 1;
+
+        vm.startPrank(recipient);
+        vm.expectEmit(address(resolver));
+        emit IRecordResolver.Linked(recordId, node, name);
+        vm.expectEmit(address(resolver));
+        emit IAddressSetter.AddressUpdated(recordId, 60, abi.encodePacked(elsewhere));
+        resolver.setAddress(name, 60, abi.encodePacked(elsewhere));
+
+        // Later writes reuse the record without linking again
+        vm.recordLogs();
+        resolver.setText(name, "url", "https://fairy.example");
+        assertEq(vm.getRecordedLogs().length, 1);
+        assertEq(resolver.getRecordId(name), recordId);
+
+        vm.expectEmit(address(resolver));
+        emit IRecordResolver.Cleared(recordId);
+        resolver.clearRecords(name);
+        assertEq(resolver.getRecordId(name), 0);
+
+        vm.expectEmit(address(resolver));
+        emit IRecordResolver.Linked(recordId + 1, node, name);
+        resolver.setText(name, "url", "https://fairy.example");
+        vm.stopPrank();
     }
 
     function test_recipientCanSetAddress() public {
@@ -129,12 +176,12 @@ contract FairyResolverTest is Test {
         resolver.setText(name, "url", "https://early.example");
     }
 
-    function test_registryOperatorCanWrite() public {
+    function test_approvedOperatorCanWrite() public {
         _gift(gifter, recipient);
         assertFalse(resolver.canModifyName(name, operator));
 
         vm.prank(recipient);
-        IERC1155(address(ETH_REGISTRY)).setApprovalForAll(operator, true);
+        resolver.setApprovalForAll(operator, true);
 
         vm.prank(operator);
         resolver.setText(name, "com.github", "gskril");
@@ -142,10 +189,53 @@ contract FairyResolverTest is Test {
         assertTrue(resolver.canModifyName(name, operator));
 
         vm.prank(recipient);
-        IERC1155(address(ETH_REGISTRY)).setApprovalForAll(operator, false);
+        resolver.setApprovalForAll(operator, false);
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, operator));
         resolver.setText(name, "com.github", "someone-else");
+    }
+
+    function test_approvedDelegateCanWriteOneName() public {
+        _gift(gifter, recipient);
+
+        vm.prank(recipient);
+        resolver.approve(node, delegate, true);
+        assertTrue(resolver.isApprovedFor(recipient, node, delegate));
+
+        vm.prank(delegate);
+        resolver.setText(name, "com.github", "gskril");
+        assertEq(_resolveText("com.github"), "gskril");
+
+        // A delegate can't hand out approvals of its own
+        vm.prank(delegate);
+        resolver.approve(node, stranger, true);
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, stranger));
+        resolver.setText(name, "com.github", "someone-else");
+    }
+
+    function test_cannotApproveSelf() public {
+        vm.startPrank(recipient);
+        vm.expectRevert(FairyResolver.InvalidApproval.selector);
+        resolver.setApprovalForAll(recipient, true);
+        vm.expectRevert(FairyResolver.InvalidApproval.selector);
+        resolver.approve(node, recipient, true);
+        vm.stopPrank();
+    }
+
+    function test_approvalsDontFollowTransfers() public {
+        _gift(gifter, recipient);
+        vm.startPrank(recipient);
+        resolver.setApprovalForAll(operator, true);
+        resolver.approve(node, delegate, true);
+        IERC1155(address(ETH_REGISTRY))
+            .safeTransferFrom(
+                recipient, stranger, ETH_REGISTRY.getTokenId(LibLabel.id(label)), 1, ""
+            );
+        vm.stopPrank();
+
+        assertFalse(resolver.canModifyName(name, operator));
+        assertFalse(resolver.canModifyName(name, delegate));
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -181,6 +271,54 @@ contract FairyResolverTest is Test {
         assertEq(_resolveText("description"), "");
     }
 
+    function test_defaultAddressAppliesToEthAndOtherEVMChains() public {
+        _gift(gifter, recipient);
+
+        vm.prank(recipient);
+        resolver.setAddress(name, COIN_TYPE_DEFAULT, abi.encodePacked(elsewhere));
+
+        (address resolved,) = _resolveAddr();
+        assertEq(resolved, elsewhere);
+        uint256 base = COIN_TYPE_DEFAULT | 8453;
+        (bytes memory result,) =
+            UNIVERSAL_RESOLVER.resolve(name, abi.encodeCall(IAddressResolver.addr, (node, base)));
+        assertEq(abi.decode(result, (bytes)), abi.encodePacked(elsewhere));
+    }
+
+    function test_servesEveryRecordProfile() public {
+        _gift(gifter, recipient);
+
+        bytes[] memory calls = new bytes[](4);
+        calls[0] = abi.encodeCall(resolver.setData, (name, "avatar", hex"cafe"));
+        calls[1] = abi.encodeCall(resolver.setName, (name, "fairy.eth"));
+        calls[2] = abi.encodeCall(resolver.setABI, (name, 1, bytes("[]")));
+        calls[3] = abi.encodeCall(resolver.setInterface, (name, bytes4(0x12345678), elsewhere));
+        vm.prank(recipient);
+        resolver.multicall(calls);
+
+        // One resolve-multicall, the way the Universal Resolver batches reads
+        bytes[] memory reads = new bytes[](6);
+        reads[0] = abi.encodeCall(IDataResolver.data, (node, "avatar"));
+        reads[1] = abi.encodeCall(INameResolver.name, (node));
+        reads[2] = abi.encodeCall(IABIResolver.ABI, (node, 1));
+        reads[3] = abi.encodeCall(IInterfaceResolver.interfaceImplementer, (node, 0x12345678));
+        reads[4] = abi.encodeCall(IHasAddressResolver.hasAddr, (node, 60));
+        reads[5] = abi.encodeCall(IAddrResolver.addr, (node));
+        bytes[] memory results = abi.decode(
+            resolver.resolve(name, abi.encodeCall(IMulticallable.multicall, (reads))), (bytes[])
+        );
+
+        assertEq(abi.decode(results[0], (bytes)), hex"cafe");
+        assertEq(abi.decode(results[1], (string)), "fairy.eth");
+        (uint256 contentType, bytes memory abiData) = abi.decode(results[2], (uint256, bytes));
+        assertEq(contentType, 1);
+        assertEq(abiData, bytes("[]"));
+        assertEq(abi.decode(results[3], (address)), elsewhere);
+        // The owner default isn't a stored address
+        assertFalse(abi.decode(results[4], (bool)));
+        assertEq(abi.decode(results[5], (address)), recipient);
+    }
+
     function test_explicitlyEmptyAddressResolvesToZero() public {
         _gift(gifter, recipient);
 
@@ -195,7 +333,9 @@ contract FairyResolverTest is Test {
         _gift(gifter, recipient);
 
         vm.prank(recipient);
-        vm.expectRevert(abi.encodeWithSelector(FairyResolver.InvalidEVMAddress.selector, hex"1234"));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAddressSetter.InvalidEVMAddress.selector, hex"1234")
+        );
         resolver.setAddress(name, 60, hex"1234");
     }
 
