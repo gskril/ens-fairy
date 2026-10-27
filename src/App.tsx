@@ -495,6 +495,7 @@ namespace styles {
     backgroundColor: 'var(--surface)',
     color: 'var(--text-secondary)',
     fontWeight: 500,
+    lineHeight: 1.25,
   })
 
   export const pendingAction = style({
