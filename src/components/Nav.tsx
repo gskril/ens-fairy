@@ -9,19 +9,15 @@ import { useEnsClient } from '../hooks/useEnsClient'
 import { getChain, isSupportedChain, mainnet } from '../lib/wagmi'
 import { Avatar, shortenAddress } from './Avatar'
 import { WalletModal } from './WalletModal'
-import { EnsFairyLogo, EnsLogoShort } from './icons'
+import { EnsMark } from './icons'
 import { Button } from './ui'
 
 export function Nav() {
   return (
     <nav {...styles.nav()}>
       <a href="/" aria-label="ENS Fairy home" {...styles.logo()}>
-        <span {...styles.shortLogo()}>
-          <EnsLogoShort />
-        </span>
-        <span {...styles.fullLogo()}>
-          <EnsFairyLogo />
-        </span>
+        <EnsMark height={34} />
+        <span {...styles.wordmark()}>ENS Fairy</span>
       </a>
       <ConnectButton />
     </nav>
@@ -130,18 +126,19 @@ namespace styles {
     width: '100%',
   })
 
-  export const logo = style({ display: 'flex', lineHeight: 0 })
-
-  export const shortLogo = style({
+  // Clear space between symbol and text is at least 1/3 of the symbol width
+  export const logo = style({
     display: 'flex',
-    width: '2.25rem',
-    '& svg': { width: '100%', height: 'auto' },
-    '@media (min-width: 640px)': { display: 'none' },
+    alignItems: 'center',
+    gap: '0.75rem',
+    color: 'var(--blue)',
   })
 
-  export const fullLogo = style({
-    display: 'none',
-    '@media (min-width: 640px)': { display: 'flex' },
+  export const wordmark = style({
+    color: 'var(--text)',
+    fontSize: '1.375rem',
+    fontWeight: 500,
+    letterSpacing: '-0.03em',
   })
 
   export const connect = style({ width: '8rem' })
@@ -155,12 +152,13 @@ namespace styles {
   })
 
   export const chainBadge = style({
-    padding: '0.25rem 0.625rem',
-    borderRadius: '999px',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '0.375rem',
     backgroundColor: 'var(--blue-light)',
     color: 'var(--blue)',
+    fontFamily: 'var(--font-mono)',
     fontSize: '0.8125rem',
-    fontWeight: 700,
+    fontWeight: 500,
   })
 
   export const profile = style({
@@ -172,8 +170,7 @@ namespace styles {
     border: '1px solid var(--border)',
     borderRadius: '999px',
     backgroundColor: 'var(--surface)',
-    boxShadow: 'var(--shadow)',
-    fontWeight: 700,
+    fontWeight: 500,
     cursor: 'pointer',
     transitionProperty: 'transform',
     transitionDuration: '150ms',
@@ -181,6 +178,8 @@ namespace styles {
   })
 
   export const profileName = style({
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9375rem',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

@@ -87,7 +87,7 @@ namespace styles {
     color: 'inherit',
     overflow: 'visible',
     '::backdrop': {
-      backgroundColor: 'rgba(30, 33, 34, 0.25)',
+      backgroundColor: 'rgba(1, 26, 37, 0.3)',
       backdropFilter: 'blur(6px)',
       animationName: fade,
       animationDuration: '200ms',
@@ -108,7 +108,7 @@ namespace styles {
     overflowY: 'auto',
     borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
     backgroundColor: 'var(--surface)',
-    boxShadow: '0 12px 48px rgba(0, 0, 0, 0.12)',
+    boxShadow: '0 12px 48px rgba(1, 26, 37, 0.12)',
     animationName: rise,
     animationDuration: '250ms',
     animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -140,15 +140,19 @@ namespace styles {
     margin: 0,
     padding: '0 2rem',
     textAlign: 'center',
-    fontSize: '1.375rem',
-    fontWeight: 700,
+    fontSize: '1.5rem',
+    fontWeight: 500,
+    letterSpacing: '-0.02em',
+    lineHeight: 1.1,
     overflowWrap: 'anywhere',
   })
 
   export const description = style({
     margin: 0,
     textAlign: 'center',
-    lineHeight: 1.45,
+    fontFamily: 'var(--font-body)',
+    fontSize: '1.0625rem',
+    lineHeight: 1.35,
     color: 'var(--text-secondary)',
   })
 }

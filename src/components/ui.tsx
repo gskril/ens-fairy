@@ -110,13 +110,13 @@ namespace styles {
       width: '100%',
       border: 'none',
       borderRadius: 'var(--radius)',
-      fontWeight: 700,
+      fontWeight: 500,
       cursor: 'pointer',
       whiteSpace: 'nowrap',
-      transitionProperty: 'transform, filter, background-color, opacity',
+      letterSpacing: '-0.01em',
+      transitionProperty: 'transform, background-color, opacity',
       transitionDuration: '150ms',
-      ':hover': { transform: 'translateY(-1px)' },
-      ':active': { transform: 'translateY(0)' },
+      ':active': { transform: 'scale(0.99)' },
       ':focus-visible': {
         outline: '2px solid var(--blue)',
         outlineOffset: '2px',
@@ -124,41 +124,35 @@ namespace styles {
       ':disabled': {
         cursor: 'not-allowed',
         transform: 'none',
-        opacity: 0.6,
+        opacity: 0.5,
       },
     },
     defaultVariants: { tone: 'primary', size: 'regular' },
     variants: {
       tone: {
         primary: {
-          backgroundImage: 'var(--gradient)',
-          color: 'white',
-          boxShadow: '0 4px 14px rgba(114, 152, 248, 0.35)',
-          ':hover': { backgroundImage: 'var(--gradient-hover)' },
+          backgroundColor: 'var(--blue)',
+          color: 'var(--surface)',
+          ':hover': { backgroundColor: 'var(--blue-hover)' },
           ':disabled': {
-            backgroundImage: 'none',
             backgroundColor: 'var(--border)',
-            color: 'var(--text-secondary)',
-            boxShadow: 'none',
+            color: 'var(--text-tertiary)',
             opacity: 1,
           },
         },
         secondary: {
           backgroundColor: 'var(--blue-light)',
           color: 'var(--blue)',
-          ':hover': { backgroundColor: '#d6e6ff' },
+          ':hover': { backgroundColor: 'var(--blue-light-hover)' },
         },
         ghost: {
           backgroundColor: 'transparent',
           color: 'var(--text-secondary)',
-          ':hover': {
-            backgroundColor: 'var(--surface-secondary)',
-            transform: 'none',
-          },
+          ':hover': { backgroundColor: 'var(--surface-secondary)' },
         },
         danger: {
-          backgroundColor: 'var(--red-light)',
-          color: 'var(--red)',
+          backgroundColor: 'var(--error-light)',
+          color: 'var(--text)',
         },
       },
       size: {
@@ -180,10 +174,13 @@ namespace styles {
     minWidth: 0,
   })
 
+  // Eyebrow-style labels, as in the brand's metadata treatment
   export const label = style({
-    paddingLeft: '0.5rem',
-    fontWeight: 700,
-    fontSize: '0.9375rem',
+    paddingLeft: '0.25rem',
+    fontWeight: 500,
+    fontSize: '0.75rem',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
     color: 'var(--text-secondary)',
   })
 
@@ -197,13 +194,14 @@ namespace styles {
     backgroundColor: 'var(--surface)',
     transitionProperty: 'border-color, box-shadow',
     transitionDuration: '150ms',
+    ':hover': { borderColor: 'var(--border-strong)' },
     ':focus-within': {
-      borderColor: '#a8c8ff',
-      boxShadow: '0 0 0 4px rgba(56, 137, 255, 0.12)',
+      borderColor: 'var(--blue)',
+      boxShadow: '0 0 0 3px var(--blue-light)',
     },
     '&[data-invalid]': {
-      borderColor: 'var(--red)',
-      boxShadow: '0 0 0 4px rgba(198, 48, 27, 0.08)',
+      borderColor: 'var(--error)',
+      boxShadow: '0 0 0 3px var(--error-light)',
     },
   })
 
@@ -215,8 +213,10 @@ namespace styles {
     border: 'none',
     outline: 'none',
     backgroundColor: 'transparent',
-    fontSize: '1rem',
-    fontWeight: 500,
+    // Names and addresses read best in mono, like the brand's name pills
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9375rem',
+    fontWeight: 400,
     '::placeholder': { color: 'var(--text-tertiary)' },
   })
 
@@ -225,16 +225,17 @@ namespace styles {
     alignItems: 'center',
     paddingLeft: '0.5rem',
     color: 'var(--text-secondary)',
-    fontWeight: 500,
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9375rem',
     whiteSpace: 'nowrap',
   })
 
   export const message = style({
-    paddingLeft: '0.5rem',
+    paddingLeft: '0.25rem',
     fontSize: '0.875rem',
     fontWeight: 500,
     color: 'var(--text-secondary)',
   })
 
-  export const error = style({ color: 'var(--red)' })
+  export const error = style({ color: 'var(--error-text)' })
 }

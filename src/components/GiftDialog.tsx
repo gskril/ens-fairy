@@ -16,7 +16,8 @@ import { Avatar, shortenAddress } from './Avatar'
 import { Dialog } from './Dialog'
 import { Button, Spinner } from './ui'
 
-const CONFETTI_COLORS = ['#44BCF0', '#7298F8', '#A099FF', '#DE82FF', '#7F6AFF']
+// ENS Blue, Light Blue, Magenta, Green, Yellow
+const CONFETTI_COLORS = ['#0080BC', '#CEE1E8', '#F53293', '#007C23', '#FFF72F']
 
 type GiftDialogProps = {
   open: boolean
@@ -73,7 +74,9 @@ export function GiftDialog({
       }
     >
       <dl {...styles.summary()}>
-        <Detail label="Name">{name}</Detail>
+        <Detail label="Name">
+          <span {...styles.namePill()}>{name}</span>
+        </Detail>
         <Detail label="Duration">
           {params.years} {params.years === 1 ? 'year' : 'years'}
         </Detail>
@@ -85,9 +88,9 @@ export function GiftDialog({
             {...styles.recipient()}
           >
             <span {...styles.recipientText()}>
-              {recipientName && <span>{recipientName}</span>}
+              {recipientName && <span {...styles.mono()}>{recipientName}</span>}
               <span
-                {...(recipientName ? styles.secondaryText() : styles.plain())}
+                {...(recipientName ? styles.secondaryText() : styles.mono())}
               >
                 {shortenAddress(params.recipient)}
               </span>
@@ -99,7 +102,9 @@ export function GiftDialog({
         </Detail>
         {price !== undefined && (
           <Detail label="Price">
-            {formatTokenAmount(price, params.token)} {symbol}
+            <span {...styles.mono()}>
+              {formatTokenAmount(price, params.token)} {symbol}
+            </span>
           </Detail>
         )}
       </dl>
@@ -342,12 +347,30 @@ namespace styles {
     borderRadius: 'var(--radius)',
   })
 
-  export const detailLabel = style({ color: 'var(--text-secondary)' })
+  export const detailLabel = style({
+    color: 'var(--text-secondary)',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  })
+
+  export const mono = style({ fontFamily: 'var(--font-mono)' })
+
+  // Names as the brand presents them: mono on a light tint
+  export const namePill = style({
+    display: 'inline-block',
+    padding: '0.125rem 0.5rem',
+    borderRadius: '0.375rem',
+    backgroundColor: 'var(--blue-light)',
+    color: 'var(--blue)',
+    fontFamily: 'var(--font-mono)',
+  })
 
   export const detailValue = style({
     margin: 0,
     minWidth: 0,
-    fontWeight: 700,
+    fontWeight: 500,
     textAlign: 'right',
     overflowWrap: 'anywhere',
   })
@@ -364,11 +387,10 @@ namespace styles {
     alignItems: 'flex-end',
   })
 
-  export const plain = style({})
-
   export const secondaryText = style({
     color: 'var(--text-secondary)',
-    fontWeight: 500,
+    fontFamily: 'var(--font-mono)',
+    fontWeight: 400,
     fontSize: '0.8125rem',
   })
 
@@ -401,11 +423,14 @@ namespace styles {
         active: {
           backgroundColor: 'var(--surface)',
           color: 'var(--text)',
-          boxShadow: 'var(--shadow)',
+          boxShadow: 'inset 0 0 0 1px var(--border)',
         },
         done: { color: 'var(--text)' },
         skipped: { color: 'var(--text-secondary)' },
-        error: { backgroundColor: 'var(--surface)', color: 'var(--red)' },
+        error: {
+          backgroundColor: 'var(--surface)',
+          color: 'var(--error-text)',
+        },
       },
     },
   })
@@ -421,7 +446,7 @@ namespace styles {
     border: '1px solid var(--border)',
     backgroundColor: 'var(--surface)',
     fontSize: '0.75rem',
-    fontWeight: 700,
+    fontWeight: 500,
   })
 
   export const iconDone = style({
@@ -437,14 +462,15 @@ namespace styles {
 
   export const iconError = style({
     borderColor: 'transparent',
-    backgroundColor: 'var(--red)',
+    backgroundColor: 'var(--error)',
     color: 'white',
   })
 
   export const stepTitle = style({ flex: 1 })
 
   export const stepMeta = style({
-    fontSize: '0.875rem',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.8125rem',
     color: 'var(--text-secondary)',
     fontVariantNumeric: 'tabular-nums',
   })
@@ -459,8 +485,8 @@ namespace styles {
     margin: 0,
     padding: '0.75rem 1rem',
     borderRadius: 'var(--radius)',
-    backgroundColor: 'var(--red-light)',
-    color: 'var(--red)',
+    backgroundColor: 'var(--error-light)',
+    color: 'var(--text)',
     fontWeight: 500,
     textAlign: 'center',
   })

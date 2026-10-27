@@ -171,7 +171,7 @@ namespace styles {
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius)',
     backgroundColor: 'var(--surface)',
-    fontWeight: 700,
+    fontWeight: 500,
     fontSize: '1rem',
     textAlign: 'left',
     cursor: 'pointer',
@@ -196,7 +196,7 @@ namespace styles {
     width: '2rem',
     height: '2rem',
     borderRadius: '0.5rem',
-    backgroundImage: 'var(--gradient)',
+    backgroundColor: 'var(--blue-light)',
   })
 
   export const qrWrapper = style({

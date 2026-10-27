@@ -45,8 +45,7 @@ namespace styles {
     flexShrink: 0,
     overflow: 'hidden',
     borderRadius: '50%',
-    backgroundImage: 'var(--gradient)',
-    boxShadow: '1px 2px 4px rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'var(--blue-light)',
   })
 
   export const image = style({
