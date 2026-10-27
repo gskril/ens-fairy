@@ -6,16 +6,13 @@ Built for ENSv2 with [ENSjs](https://github.com/ensdomains/ensjs), [wagmi](https
 
 ## How gifting works
 
-Registrations on the ENSv2 `.eth` registrar are paid in USDC or DAI. A gift takes up to four transactions from the sender:
+Registrations on the ENSv2 `.eth` registrar are paid in USDC or DAI. Every gifted name points at the shared [FairyResolver](#fairyresolver), which resolves the name to its owner until they set records, so a gift takes up to three transactions from the sender:
 
-1. **Set up their records.** Deploys a `PermissionedResolver` proxy through the `VerifiableFactory`. The recipient is granted every resolver role, and the name's ETH address is set to the recipient during initialization, so the name resolves as soon as it's registered. The sender gets no roles.
-2. **Approve** the registrar to spend the token (skipped if the allowance is already enough).
-3. **Commit** to the registration, which protects it from front-running.
-4. **Register** the name to the recipient after the 60 second waiting period.
+1. **Approve** the registrar to spend the token (skipped if the allowance is already enough).
+2. **Commit** to the registration, which protects it from front-running.
+3. **Register** the name to the recipient after the 60 second waiting period.
 
-With a shared [FairyResolver](#fairyresolver) configured, step 1 goes away: names point at one resolver, so a gift is just approve, commit and register.
-
-Wallets that support atomic batching ([EIP-5792](https://eips.ethereum.org/EIPS/eip-5792) `wallet_sendCalls`) get steps 1–3 as a single confirmation, so a gift takes two wallet interactions instead of four. The resolver address is predicted ahead of the deploy (the factory derives it from the sender and a salt), which lets the commit reference it in the same batch.
+Wallets that support atomic batching ([EIP-5792](https://eips.ethereum.org/EIPS/eip-5792) `wallet_sendCalls`) get steps 1–2 as a single confirmation, so a gift takes two wallet interactions.
 
 Before the first transaction, the whole sequence is simulated with `eth_simulateV1`, so a gift that would fail is caught before any gas is spent. The commit secret is saved in `localStorage`, so a reload during the wait doesn't lose the reservation.
 
@@ -23,12 +20,24 @@ Before the first transaction, the whole sequence is simulated with `eth_simulate
 
 ```bash
 bun install
+cp .env.example .env   # then fill in the FairyResolver addresses
 bun dev
 ```
 
 The app runs at [http://localhost:5173](http://localhost:5173) with the Worker running locally in `workerd`.
 
-RPC requests go through the Worker at `/rpc/:chainId`, which proxies read-only `eth_*` methods. It falls back to public RPCs. To use your own, copy `.dev.vars.example` to `.dev.vars` and fill in `MAINNET_RPC_URL` and/or `SEPOLIA_RPC_URL`.
+### Environment variables
+
+| Variable | Where | Required |
+| --- | --- | --- |
+| `VITE_FAIRY_RESOLVER_1` | Build time (`.env` or CI) | For gifting on mainnet |
+| `VITE_FAIRY_RESOLVER_11155111` | Build time (`.env` or CI) | For gifting on Sepolia |
+| `MAINNET_RPC_URL` | Worker secret (`.dev.vars` locally) | No, falls back to a public RPC |
+| `SEPOLIA_RPC_URL` | Worker secret (`.dev.vars` locally) | No, falls back to a public RPC |
+
+The resolver addresses are baked into the frontend by Vite, so they have to be set when running `bun run build` / `bun run deploy`, not as Worker secrets. They're public, so committing them in `.env` is fine. On a chain without one, the app shows a "down for maintenance" screen instead of the form.
+
+RPC requests go through the Worker at `/rpc/:chainId`, which proxies read-only `eth_*` methods. To use your own RPCs, copy `.dev.vars.example` to `.dev.vars` locally, and use `wrangler secret put` in production.
 
 ### Testing on Sepolia
 
@@ -48,12 +57,12 @@ This dry-runs a full gift against live chain state and reports whether it would 
 ```bash
 bunx wrangler secret put MAINNET_RPC_URL   # optional
 bunx wrangler secret put SEPOLIA_RPC_URL   # optional
-bun run deploy
+bun run deploy                             # with VITE_FAIRY_RESOLVER_* set
 ```
 
 ## FairyResolver
 
-[`contracts/src/FairyResolver.sol`](contracts/src/FairyResolver.sol) is an optional shared resolver for gifted names. One deployment serves every name, so a gift doesn't deploy a resolver of its own (about 267k gas saved per gift on mainnet).
+[`contracts/src/FairyResolver.sol`](contracts/src/FairyResolver.sol) is the shared resolver every gifted name points at. One deployment serves every name, so a gift doesn't deploy a resolver of its own.
 
 - **A v2 resolver.** It implements the same `IRecordResolver` interface as ENSv2's `PermissionedResolver`: name-based setters (`setAddress`, `setText`, `setContenthash`, `setData`, `setABI`, `setInterface`, `setName`, `multicall`), the same `resolve` profiles (including resolve-multicall and the ENSIP-19 default address), and the same `Linked` / `*Updated(recordId, …)` / `Cleared` events, so the ENS manager and v2 indexers treat it like any other v2 resolver. Record IDs are derived from the registration rather than stored, so `Linked` is emitted on every write. It has no EAC roles.
 - **Owner-controlled.** Records can be written by the name's current owner in the ENSv2 .eth registry, or by accounts the owner approves here, as in `PublicResolverV2`: an operator for all their names (`setApprovalForAll`) or a delegate for one (`approve`). Approvals belong to the owner, so they stop applying when a name changes hands. There's no admin and no upgrade path.
@@ -76,7 +85,7 @@ Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to a public RPC. To depl
 forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <keystore>   # or mainnet
 ```
 
-Then set `VITE_FAIRY_RESOLVER_11155111` (or `VITE_FAIRY_RESOLVER_1`) to the printed address and rebuild. Without it, gifts deploy a per-name PermissionedResolver.
+Then set `VITE_FAIRY_RESOLVER_11155111` (or `VITE_FAIRY_RESOLVER_1`) to the printed address and rebuild. Until it's set, that chain shows the maintenance screen.
 
 ## Brand assets
 

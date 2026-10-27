@@ -10,7 +10,6 @@ import {
   type Transport,
   erc20Abi,
 } from 'viem'
-import { getCode } from 'viem/actions'
 import {
   getCapabilities,
   getConnectorClient,
@@ -27,20 +26,16 @@ import {
   type EnsChain,
   PAYMENT_TOKENS,
   type PaymentToken,
-  deployRecipientResolver,
   dryRunGift,
   formatTokenAmount,
-  getDeployedResolver,
   getErrorMessage,
+  getFairyResolver,
   getGiftCalls,
   getGiftPrice,
   getPaymentTokenAddress,
   getRegisterWriteParameters,
   getRegistrarAddress,
   getRevertError,
-  getSharedResolver,
-  predictResolverAddress,
-  randomSalt,
   yearsToSeconds,
 } from '../lib/gift'
 import { type SupportedChainId, config } from '../lib/wagmi'
@@ -53,7 +48,7 @@ export type GiftParams = {
   token: PaymentToken
 }
 
-export type StepId = 'resolver' | 'approve' | 'commit' | 'wait' | 'register'
+export type StepId = 'approve' | 'commit' | 'wait' | 'register'
 export type Phase = 'idle' | StepId | 'done'
 export type TxStatus = 'sign' | 'confirm'
 
@@ -68,20 +63,16 @@ export type GiftState = {
   approvalSkipped?: boolean
   /** True while the gift is being simulated before any transactions */
   checking?: boolean
-  /** True when setup, approval, and commit are sent as one wallet batch */
+  /** True when approval and commit are sent as one wallet batch */
   batched?: boolean
-  /** True when gifts use the shared FairyResolver, so no resolver is deployed */
-  sharedResolver?: boolean
   hashes: Partial<Record<StepId, Hash>>
 }
 
 /** Saved between page loads so a refresh mid-flow doesn't waste the commit */
 type Draft = {
   secret: Hex
-  salt: string
-  /** Saved before the deploy is sent, so a reload can find the resolver */
-  predictedResolver?: Address
-  resolver?: Address
+  /** The resolver the commitment was made with */
+  resolver: Address
   /** EIP-5792 batch id, while a batched setup is in flight */
   batchId?: string
   commitHash?: Hash
@@ -104,7 +95,6 @@ async function supportsAtomicBatch(chainId: SupportedChainId) {
 
 const STEP_ORDER: Phase[] = [
   'idle',
-  'resolver',
   'approve',
   'commit',
   'wait',
@@ -176,11 +166,9 @@ export function useGiftFlow(params: GiftParams | undefined) {
     if (!params) throw new Error('Missing gift details')
     let draft = loadDraft(params)
     if (!draft) {
-      draft = {
-        secret: randomSecret(),
-        salt: randomSalt().toString(),
-        resolver: getSharedResolver(params.chainId),
-      }
+      const resolver = getFairyResolver(params.chainId)
+      if (!resolver) throw new Error('Gifting is paused on this network')
+      draft = { secret: randomSecret(), resolver }
       saveDraft(params, draft)
     }
     return draft
@@ -199,7 +187,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
 
   const registrationParams = useCallback(
     (draft: Draft) => {
-      if (!params || !draft.resolver) throw new Error('Missing resolver')
+      if (!params) throw new Error('Missing gift details')
       return {
         label: params.label,
         owner: params.recipient,
@@ -211,7 +199,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     [params]
   )
 
-  /** Waits for a setup batch and records the resolver and commit it made. */
+  /** Waits for a setup batch and records the commit it made. */
   const finishBatch = useCallback(
     async (draft: Draft, id: string) => {
       if (!params) return
@@ -227,7 +215,6 @@ export function useGiftFlow(params: GiftParams | undefined) {
         throw new Error('The wallet batch failed')
       }
 
-      draft.resolver ??= draft.predictedResolver
       draft.commitHash = last.transactionHash
       saveDraft(params, draft)
     },
@@ -293,7 +280,6 @@ export function useGiftFlow(params: GiftParams | undefined) {
     try {
       const { wallet, client } = await getClients()
       const account = wallet.account.address
-      const name = `${params.label}.eth`
       const token = getPaymentTokenAddress(wallet.chain, params.token)
       const registrar = getRegistrarAddress(wallet.chain)
       const draft = getDraft()
@@ -301,18 +287,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
         ...params,
         account,
         secret: draft.secret,
-        salt: BigInt(draft.salt),
-      }
-
-      // A resolver deploy that landed before a reload: pick it back up
-      if (!draft.resolver && draft.predictedResolver) {
-        const code = await getCode(client, {
-          address: draft.predictedResolver,
-        })
-        if (code && code !== '0x') {
-          draft.resolver = draft.predictedResolver
-          saveDraft(params, draft)
-        }
+        resolverAddress: draft.resolver,
       }
 
       // A batch that was sent before a reload: wait for it to finish
@@ -338,27 +313,18 @@ export function useGiftFlow(params: GiftParams | undefined) {
           )
         }
 
-        // Simulate the whole gift first so nobody pays gas for a doomed attempt.
-        // Skipped once a per-name resolver exists, since its deploy can't rerun.
-        const sharedResolver = getSharedResolver(params.chainId)
-        if (!draft.resolver || draft.resolver === sharedResolver) {
-          update({ checking: true })
-          let failure: unknown
-          try {
-            failure = await dryRunGift(client, setup)
-          } catch (err) {
-            // Not every RPC supports eth_simulateV1. Carry on without it.
-            console.warn('Skipping gift simulation', err)
-          } finally {
-            update({ checking: false })
-          }
-          if (failure) throw failure
+        // Simulate the whole gift first so nobody pays gas for a doomed attempt
+        update({ checking: true })
+        let failure: unknown
+        try {
+          failure = await dryRunGift(client, setup)
+        } catch (err) {
+          // Not every RPC supports eth_simulateV1. Carry on without it.
+          console.warn('Skipping gift simulation', err)
+        } finally {
+          update({ checking: false })
         }
-
-        if (!draft.resolver) {
-          draft.predictedResolver = await predictResolverAddress(client, setup)
-          saveDraft(params, draft)
-        }
+        if (failure) throw failure
 
         const allowance = await readContract(config, {
           chainId: params.chainId,
@@ -368,15 +334,13 @@ export function useGiftFlow(params: GiftParams | undefined) {
           args: [account, registrar],
         })
         const needsApproval = allowance < price.total
-        const resolverAddress = draft.resolver ?? draft.predictedResolver!
         const calls = getGiftCalls(client, {
           ...setup,
-          resolverAddress,
           approveAmount: price.total,
         })
 
         if (await supportsAtomicBatch(params.chainId)) {
-          // 1–3 in a single wallet confirmation
+          // Approval and commit in a single wallet confirmation
           update({
             batched: true,
             phase: 'commit',
@@ -386,11 +350,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
           const { id } = await sendCalls(config, {
             chainId: params.chainId,
             forceAtomic: true,
-            calls: [
-              ...(draft.resolver ? [] : [calls.resolver]),
-              ...(needsApproval ? [calls.approve] : []),
-              calls.commit,
-            ],
+            calls: [...(needsApproval ? [calls.approve] : []), calls.commit],
           })
           draft.batchId = id
           saveDraft(params, draft)
@@ -399,31 +359,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
         } else {
           update({ batched: false })
 
-          // 1. Deploy a resolver owned by the recipient, pointing the name at them
-          if (!draft.resolver) {
-            update({ phase: 'resolver', txStatus: 'sign' })
-            const hash = await deployRecipientResolver(wallet, {
-              name,
-              recipient: params.recipient,
-              salt: setup.salt,
-            })
-            setHash('resolver', hash)
-            update({ txStatus: 'confirm' })
-            const receipt = await waitForTransactionReceipt(config, {
-              hash,
-              chainId: params.chainId,
-            })
-            if (receipt.status !== 'success') {
-              throw new Error('Resolver setup failed')
-            }
-            draft.resolver = getDeployedResolver(receipt, {
-              chain: wallet.chain,
-              sender: account,
-            })
-            saveDraft(params, draft)
-          }
-
-          // 2. Approve the registrar to take payment
+          // 1. Approve the registrar to take payment
           update({ phase: 'approve', txStatus: undefined })
           if (needsApproval) {
             update({ txStatus: 'sign' })
@@ -447,7 +383,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
             update({ approvalSkipped: true })
           }
 
-          // 3. Commit to the registration (front-running protection)
+          // 2. Commit to the registration (front-running protection)
           update({ phase: 'commit', txStatus: 'sign' })
           draft.commitHash = await commitName(wallet, registrationParams(draft))
           saveDraft(params, draft)
@@ -466,7 +402,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
         throw new Error('Commit transaction failed')
       }
 
-      // 4. Wait for the commitment to mature
+      // 3. Wait for the commitment to mature
       await waitUntilReady(draft)
     } catch (err) {
       update({ error: getErrorMessage(err) })
@@ -484,7 +420,7 @@ export function useGiftFlow(params: GiftParams | undefined) {
     waitUntilReady,
   ])
 
-  /** 5. Reveal the commitment and pay for the name. */
+  /** 4. Reveal the commitment and pay for the name. */
   const register = useCallback(async () => {
     if (!params || running.current) return
     running.current = true
@@ -522,7 +458,6 @@ export function useGiftFlow(params: GiftParams | undefined) {
     setState({
       phase: draft?.commitHash ? 'wait' : 'idle',
       batched: !!draft?.batchId || undefined,
-      sharedResolver: !!getSharedResolver(params.chainId) || undefined,
       hashes: draft?.commitHash ? { commit: draft.commitHash } : {},
     })
   }, [params])

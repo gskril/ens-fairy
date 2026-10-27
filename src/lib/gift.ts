@@ -1,27 +1,14 @@
 import { eacErrors } from '@ensdomains/ensjs-abi/v2/enhancedAccessControl'
 import { ethRegistrarErrors } from '@ensdomains/ensjs-abi/v2/ethRegistrar'
-import { permissionedResolverInitializeSnippet } from '@ensdomains/ensjs-abi/v2/permissionedResolver'
-import {
-  proxyDeployedEventSnippet,
-  verifiableFactoryDeployProxySnippet,
-} from '@ensdomains/ensjs-abi/v2/verifiableFactory'
 import {
   type ChainWithContracts,
   getChainContractAddress,
 } from '@ensdomains/ensjs/chain'
 import { getRegisterPrice } from '@ensdomains/ensjs/public'
 import {
-  RESOLVER_ALL_ROLES,
-  setAddressParameters,
-} from '@ensdomains/ensjs/utils/v2'
-import {
   commitNameWriteParameters,
   registerNameWriteParameters,
 } from '@ensdomains/ensjs/wallet'
-import {
-  deployVerifiableProxy,
-  deployVerifiableProxyWriteParameters,
-} from '@ensdomains/ensjs/wallet/v2'
 import {
   type Account,
   type Address,
@@ -29,27 +16,20 @@ import {
   type Client,
   ContractFunctionRevertedError,
   type Hex,
-  type TransactionReceipt,
   type Transport,
-  bytesToBigInt,
   decodeErrorResult,
-  decodeFunctionResult,
   encodeFunctionData,
   erc20Abi,
   formatUnits,
   isAddress,
-  isAddressEqual,
   parseAbi,
-  parseEventLogs,
 } from 'viem'
 import { toAccount } from 'viem/accounts'
-import { call, getBlock, simulateBlocks } from 'viem/actions'
+import { getBlock, simulateBlocks } from 'viem/actions'
 
 /** A chain with every ENS contract the gift flow touches. */
 export type EnsChain = ChainWithContracts<
   | 'ensEthRegistrar'
-  | 'ensVerifiableFactory'
-  | 'ensPermissionedResolverImpl'
   | 'ensUniversalResolver'
   | 'ensUniversalHelper'
   | 'usdc'
@@ -59,18 +39,18 @@ export type EnsChain = ChainWithContracts<
 export const SECONDS_PER_YEAR = 31_536_000
 
 /**
- * Shared FairyResolver deployments (contracts/src/FairyResolver.sol), set at
- * build time with VITE_FAIRY_RESOLVER_<chainId>. When a chain has one, gifts
- * point names at it and skip deploying a resolver per name: the name resolves
- * to its owner until they set records.
+ * FairyResolver deployments (contracts/src/FairyResolver.sol), set at build
+ * time with VITE_FAIRY_RESOLVER_<chainId>. Every gifted name points at it and
+ * resolves to its owner until they set records. Gifting is paused on chains
+ * without one.
  */
-const SHARED_RESOLVERS: Partial<Record<number, string | undefined>> = {
+const FAIRY_RESOLVERS: Partial<Record<number, string | undefined>> = {
   1: import.meta.env.VITE_FAIRY_RESOLVER_1,
   11155111: import.meta.env.VITE_FAIRY_RESOLVER_11155111,
 }
 
-export function getSharedResolver(chainId: number): Address | undefined {
-  const address = SHARED_RESOLVERS[chainId]
+export function getFairyResolver(chainId: number): Address | undefined {
+  const address = FAIRY_RESOLVERS[chainId]
   return address && isAddress(address) ? address : undefined
 }
 
@@ -97,9 +77,6 @@ export function formatTokenAmount(amount: bigint, token: PaymentToken) {
   })
 }
 
-export const randomSalt = () =>
-  bytesToBigInt(crypto.getRandomValues(new Uint8Array(32)))
-
 export function yearsToSeconds(years: number) {
   return Math.round(years * SECONDS_PER_YEAR)
 }
@@ -115,88 +92,6 @@ export async function getGiftPrice(
   })
 
   return { base, premium, total: base + premium }
-}
-
-/**
- * Calldata that initializes a PermissionedResolver proxy for the recipient.
- *
- * The recipient is granted every resolver role, so they fully control their
- * records from day one. The ETH address record is written during
- * initialization (when role checks are skipped), which means the name
- * resolves to the recipient as soon as it's registered. The person paying
- * gets no roles on the resolver.
- */
-export function encodeResolverInit({
-  name,
-  recipient,
-}: {
-  name: string
-  recipient: Address
-}) {
-  return encodeFunctionData({
-    abi: permissionedResolverInitializeSnippet,
-    functionName: 'initialize',
-    args: [
-      [{ account: recipient, roleBitmap: RESOLVER_ALL_ROLES }],
-      [
-        encodeFunctionData(
-          setAddressParameters({ name, coin: 60, value: recipient })
-        ),
-      ],
-    ],
-  })
-}
-
-type ResolverDeployParameters = {
-  name: string
-  recipient: Address
-  salt: bigint
-}
-
-function resolverDeployArgs(
-  chain: EnsChain,
-  { name, recipient, salt }: ResolverDeployParameters
-) {
-  return {
-    factoryAddress: getChainContractAddress({
-      chain,
-      contract: 'ensVerifiableFactory',
-    }),
-    implAddress: getChainContractAddress({
-      chain,
-      contract: 'ensPermissionedResolverImpl',
-    }),
-    callData: encodeResolverInit({ name, recipient }),
-    salt,
-  }
-}
-
-export function deployRecipientResolver(
-  wallet: Client<Transport, EnsChain, Account>,
-  params: ResolverDeployParameters
-) {
-  return deployVerifiableProxy(wallet, resolverDeployArgs(wallet.chain, params))
-}
-
-/** Finds the resolver proxy address in the deploy transaction's logs. */
-export function getDeployedResolver(
-  receipt: TransactionReceipt,
-  { chain, sender }: { chain: EnsChain; sender: Address }
-) {
-  const factory = getChainContractAddress({
-    chain,
-    contract: 'ensVerifiableFactory',
-  })
-
-  const [event] = parseEventLogs({
-    abi: proxyDeployedEventSnippet,
-    eventName: 'ProxyDeployed',
-    logs: receipt.logs.filter((log) => isAddressEqual(log.address, factory)),
-    args: { sender },
-  })
-
-  if (!event) throw new Error('Resolver deployment not found in transaction')
-  return event.args.proxyAddress
 }
 
 export type RegistrationParams = {
@@ -224,30 +119,7 @@ export type GiftSetup = {
   years: number
   token: PaymentToken
   secret: Hex
-  salt: bigint
-}
-
-/**
- * Predicts the recipient's resolver address. The factory derives it from
- * (sender, salt), so it's known before the deploy is sent. Reverts if a proxy
- * is already deployed at that address.
- */
-export async function predictResolverAddress(
-  client: Client<Transport, EnsChain>,
-  { account, label, recipient, salt }: GiftSetup
-) {
-  const call_ = resolverDeployCall(client, account, {
-    name: `${label}.eth`,
-    recipient,
-    salt,
-  })
-  const { data } = await call(client, { account, ...call_ })
-  if (!data) throw new Error('Could not predict resolver address')
-  return decodeFunctionResult({
-    abi: verifiableFactoryDeployProxySnippet,
-    functionName: 'deployProxy',
-    data,
-  })
+  resolverAddress: Address
 }
 
 function asSender(client: Client<Transport, EnsChain>, account: Address) {
@@ -259,34 +131,15 @@ function asSender(client: Client<Transport, EnsChain>, account: Address) {
   >
 }
 
-function resolverDeployCall(
-  client: Client<Transport, EnsChain>,
-  account: Address,
-  params: ResolverDeployParameters
-): GiftCall {
-  const deploy = deployVerifiableProxyWriteParameters(
-    asSender(client, account),
-    resolverDeployArgs(client.chain, params)
-  )
-  return {
-    to: deploy.address,
-    data: encodeFunctionData({
-      abi: deploy.abi,
-      functionName: deploy.functionName,
-      args: deploy.args,
-    }),
-  }
-}
-
 /**
  * Builds every call in a gift as raw `{ to, data }`, so the same calls can be
  * simulated, sent one at a time, or batched with `wallet_sendCalls`.
  */
 export function getGiftCalls(
   client: Client<Transport, EnsChain>,
-  setup: GiftSetup & { resolverAddress: Address; approveAmount: bigint }
+  setup: GiftSetup & { approveAmount: bigint }
 ) {
-  const { account, label, recipient, years, token, secret, salt } = setup
+  const { account, label, recipient, years, token, secret } = setup
   const sender = asSender(client, account)
   const paymentToken = getPaymentTokenAddress(client.chain, token)
   const registration = {
@@ -303,11 +156,6 @@ export function getGiftCalls(
   })
 
   return {
-    resolver: resolverDeployCall(client, account, {
-      name: `${label}.eth`,
-      recipient,
-      salt,
-    }),
     approve: {
       to: paymentToken,
       data: encodeFunctionData({
@@ -336,7 +184,7 @@ export function getGiftCalls(
 }
 
 /**
- * Replays the whole gift (resolver, approval, commit, and a register after the
+ * Replays the whole gift (approval, commit, and a register after the
  * waiting period) against current chain state with `eth_simulateV1`, so a gift
  * that would fail is caught before any gas is spent. Resolves to the first
  * failing call's error, or `undefined` if everything succeeds. Throws if the
@@ -346,26 +194,15 @@ export async function dryRunGift(
   client: Client<Transport, EnsChain>,
   setup: GiftSetup
 ) {
-  const sharedResolver = getSharedResolver(client.chain.id)
-  const resolverAddress =
-    sharedResolver ?? (await predictResolverAddress(client, setup))
   const { total } = await getGiftPrice(client, setup)
-  const calls = getGiftCalls(client, {
-    ...setup,
-    resolverAddress,
-    approveAmount: total,
-  })
+  const calls = getGiftCalls(client, { ...setup, approveAmount: total })
   const { timestamp } = await getBlock(client)
   const from = (c: GiftCall) => ({ account: setup.account, ...c })
 
   const blocks = await simulateBlocks(client, {
     blocks: [
       {
-        calls: [
-          ...(sharedResolver ? [] : [from(calls.resolver)]),
-          from(calls.approve),
-          from(calls.commit),
-        ],
+        calls: [from(calls.approve), from(calls.commit)],
       },
       {
         blockOverrides: { time: timestamp + 600n },

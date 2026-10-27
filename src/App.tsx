@@ -16,14 +16,28 @@ import {
   PAYMENT_TOKENS,
   type PaymentToken,
   formatTokenAmount,
+  getFairyResolver,
 } from './lib/gift'
-import { isSupportedChain, mainnet, sepolia } from './lib/wagmi'
+import {
+  type SupportedChainId,
+  chains,
+  isSupportedChain,
+  mainnet,
+  sepolia,
+} from './lib/wagmi'
+
+const CHAIN_NAMES: Record<SupportedChainId, string> = {
+  [mainnet.id]: 'Ethereum',
+  [sepolia.id]: 'Sepolia',
+}
 
 export function App() {
   const { isConnected, chainId: walletChainId } = useConnection()
   const { mutate: switchChain, isPending: isSwitching } = useSwitchChain()
   const chainId = isSupportedChain(walletChainId) ? walletChainId : mainnet.id
   const unsupportedChain = isConnected && !isSupportedChain(walletChainId)
+  // Gifting needs a FairyResolver deployment on the chain
+  const paused = !getFairyResolver(chainId)
 
   const [nameInput, setNameInput] = useState('')
   const [recipientInput, setRecipientInput] = useState('')
@@ -119,120 +133,129 @@ export function App() {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} {...styles.card()}>
-          <div {...styles.fields()}>
-            <Input
-              label="Name"
-              placeholder="gregskril"
-              maxLength={64}
-              suffix={
-                name.isLoading || name.isTyping
-                  ? nameInput && <Spinner />
-                  : '.eth'
-              }
-              value={nameInput}
-              error={nameError}
-              hint={
-                name.label && name.isAvailable ? (
-                  <span {...styles.available()}>Available</span>
-                ) : undefined
-              }
-              onChange={(e) => setNameInput(e.target.value)}
-            />
+        {paused ? (
+          <Maintenance
+            chainId={chainId}
+            isConnected={isConnected}
+            isSwitching={isSwitching}
+            onSwitch={(id) => switchChain({ chainId: id })}
+          />
+        ) : (
+          <form onSubmit={handleSubmit} {...styles.card()}>
+            <div {...styles.fields()}>
+              <Input
+                label="Name"
+                placeholder="gregskril"
+                maxLength={64}
+                suffix={
+                  name.isLoading || name.isTyping
+                    ? nameInput && <Spinner />
+                    : '.eth'
+                }
+                value={nameInput}
+                error={nameError}
+                hint={
+                  name.label && name.isAvailable ? (
+                    <span {...styles.available()}>Available</span>
+                  ) : undefined
+                }
+                onChange={(e) => setNameInput(e.target.value)}
+              />
 
-            <Input
-              label="Recipient"
-              placeholder="0xA0Cf…251e or name.eth"
-              maxLength={255}
-              value={recipientInput}
-              suffix={recipient.isLoading && recipientInput && <Spinner />}
-              error={recipient.error}
-              hint={
-                recipient.recipient?.name &&
-                recipientInput.trim() !== recipient.recipient.name
-                  ? recipient.recipient.name
-                  : recipient.recipient && recipientInput.includes('.')
-                    ? `${recipient.recipient.address.slice(0, 6)}…${recipient.recipient.address.slice(-4)}`
-                    : undefined
-              }
-              onChange={(e) => setRecipientInput(e.target.value)}
-            />
+              <Input
+                label="Recipient"
+                placeholder="0xA0Cf…251e or name.eth"
+                maxLength={255}
+                value={recipientInput}
+                suffix={recipient.isLoading && recipientInput && <Spinner />}
+                error={recipient.error}
+                hint={
+                  recipient.recipient?.name &&
+                  recipientInput.trim() !== recipient.recipient.name
+                    ? recipient.recipient.name
+                    : recipient.recipient && recipientInput.includes('.')
+                      ? `${recipient.recipient.address.slice(0, 6)}…${recipient.recipient.address.slice(-4)}`
+                      : undefined
+                }
+                onChange={(e) => setRecipientInput(e.target.value)}
+              />
 
-            <Input
-              label="Duration"
-              placeholder="1"
-              inputMode="numeric"
-              value={yearsInput}
-              error={invalidYears ? '1 to 100 years' : undefined}
-              suffix={years === 1 ? 'year' : 'years'}
-              onChange={(e) =>
-                setYearsInput(e.target.value.replace(/[^0-9]/g, ''))
-              }
-            />
-          </div>
-
-          <div {...styles.footerRow()}>
-            <div
-              role="radiogroup"
-              aria-label="Payment token"
-              {...styles.tokens()}
-            >
-              {(Object.keys(PAYMENT_TOKENS) as PaymentToken[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  role="radio"
-                  aria-checked={token === t}
-                  onClick={() => setToken(t)}
-                  {...cx(styles.token(), token === t && styles.tokenActive())}
-                >
-                  {PAYMENT_TOKENS[t].symbol}
-                </button>
-              ))}
+              <Input
+                label="Duration"
+                placeholder="1"
+                inputMode="numeric"
+                value={yearsInput}
+                error={invalidYears ? '1 to 100 years' : undefined}
+                suffix={years === 1 ? 'year' : 'years'}
+                onChange={(e) =>
+                  setYearsInput(e.target.value.replace(/[^0-9]/g, ''))
+                }
+              />
             </div>
 
-            <div {...styles.price()}>
-              {name.price ? (
-                <>
-                  <span {...styles.priceValue()}>
-                    {formatTokenAmount(name.price.total, token)} {symbol}
-                  </span>
-                  {name.price.premium > 0n && (
-                    <span {...styles.premium()}>
-                      incl. {formatTokenAmount(name.price.premium, token)}{' '}
-                      premium
+            <div {...styles.footerRow()}>
+              <div
+                role="radiogroup"
+                aria-label="Payment token"
+                {...styles.tokens()}
+              >
+                {(Object.keys(PAYMENT_TOKENS) as PaymentToken[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={token === t}
+                    onClick={() => setToken(t)}
+                    {...cx(styles.token(), token === t && styles.tokenActive())}
+                  >
+                    {PAYMENT_TOKENS[t].symbol}
+                  </button>
+                ))}
+              </div>
+
+              <div {...styles.price()}>
+                {name.price ? (
+                  <>
+                    <span {...styles.priceValue()}>
+                      {formatTokenAmount(name.price.total, token)} {symbol}
                     </span>
-                  )}
-                </>
-              ) : name.isPriceLoading ? (
-                <Spinner />
-              ) : (
-                <span {...styles.pricePlaceholder()}>Paid in {symbol}</span>
-              )}
+                    {name.price.premium > 0n && (
+                      <span {...styles.premium()}>
+                        incl. {formatTokenAmount(name.price.premium, token)}{' '}
+                        premium
+                      </span>
+                    )}
+                  </>
+                ) : name.isPriceLoading ? (
+                  <Spinner />
+                ) : (
+                  <span {...styles.pricePlaceholder()}>Paid in {symbol}</span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {!isConnected ? (
-            <Button type="submit">Connect Wallet</Button>
-          ) : unsupportedChain ? (
-            <Button
-              loading={isSwitching}
-              onClick={() => switchChain({ chainId: mainnet.id })}
-            >
-              Switch to Ethereum
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={!canSubmit}
-              loading={name.isLoading && !!name.label}
-            >
-              {name.label ? `Gift ${name.label}.eth` : 'Gift'}
-            </Button>
-          )}
-        </form>
+            {!isConnected ? (
+              <Button type="submit">Connect Wallet</Button>
+            ) : unsupportedChain ? (
+              <Button
+                loading={isSwitching}
+                onClick={() => switchChain({ chainId: mainnet.id })}
+              >
+                Switch to Ethereum
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={!canSubmit}
+                loading={name.isLoading && !!name.label}
+              >
+                {name.label ? `Gift ${name.label}.eth` : 'Gift'}
+              </Button>
+            )}
+          </form>
+        )}
 
-        {isConnected && chainId === sepolia.id && (
+        {!paused && isConnected && chainId === sepolia.id && (
           <TestnetFaucet token={token} />
         )}
       </main>
@@ -284,6 +307,35 @@ export function App() {
           },
         }}
       />
+    </div>
+  )
+}
+
+function Maintenance({
+  chainId,
+  isConnected,
+  isSwitching,
+  onSwitch,
+}: {
+  chainId: SupportedChainId
+  isConnected: boolean
+  isSwitching: boolean
+  onSwitch: (chainId: SupportedChainId) => void
+}) {
+  const live = chains.find((chain) => getFairyResolver(chain.id))
+
+  return (
+    <div role="status" {...cx(styles.card(), styles.maintenance())}>
+      <h2 {...styles.maintenanceTitle()}>Down for maintenance</h2>
+      <p {...styles.maintenanceText()}>
+        Gifting on {CHAIN_NAMES[chainId]} is paused while ENS Fairy gets ready
+        for ENSv2. Check back soon.
+      </p>
+      {live && isConnected && (
+        <Button loading={isSwitching} onClick={() => onSwitch(live.id)}>
+          Switch to {CHAIN_NAMES[live.id]}
+        </Button>
+      )}
     </div>
   )
 }
@@ -370,6 +422,30 @@ namespace styles {
   })
 
   export const available = style({ color: 'var(--green)' })
+
+  export const maintenance = style({
+    alignItems: 'center',
+    textAlign: 'center',
+    padding: '2rem 1rem',
+    '@media (min-width: 640px)': { padding: '2.5rem' },
+  })
+
+  export const maintenanceTitle = style({
+    margin: 0,
+    fontFamily: 'var(--font-mono)',
+    fontSize: '1.25rem',
+    fontWeight: 500,
+    letterSpacing: '-0.02em',
+  })
+
+  export const maintenanceText = style({
+    maxWidth: '28rem',
+    margin: 0,
+    color: 'var(--text-secondary)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '1.0625rem',
+    lineHeight: 1.4,
+  })
 
   export const footerRow = style({
     display: 'flex',

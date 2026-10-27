@@ -1,18 +1,20 @@
 /**
- * Dry-runs a full gift (resolver, approval, commit, register) against live
+ * Dry-runs a full gift (approval, commit, register) against live
  * chain state with eth_simulateV1, to check that registrations work end to end.
  *
  *   bun run check            # mainnet
  *   bun run check sepolia    # sepolia (needs an account holding test USDC)
  *
- * Set CHECK_ACCOUNT to simulate from a specific address that holds USDC.
+ * Set CHECK_ACCOUNT to simulate from a specific address that holds USDC. Uses
+ * VITE_FAIRY_RESOLVER_<chainId> as the resolver when set; the registrar
+ * doesn't check it, so any address works for the dry run.
  */
 import { addEnsContracts } from '@ensdomains/ensjs'
 import { randomSecret } from '@ensdomains/ensjs/utils'
-import { type Address, createClient, http } from 'viem'
+import { type Address, createClient, http, zeroAddress } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 
-import { dryRunGift, getErrorMessage, randomSalt } from '../src/lib/gift'
+import { dryRunGift, getErrorMessage, getFairyResolver } from '../src/lib/gift'
 
 const isSepolia = process.argv[2] === 'sepolia'
 const chain = addEnsContracts(isSepolia ? sepolia : mainnet)
@@ -35,7 +37,7 @@ const failure = await dryRunGift(client, {
   years: 1,
   token: 'usdc',
   secret: randomSecret(),
-  salt: randomSalt(),
+  resolverAddress: getFairyResolver(chain.id) ?? zeroAddress,
 })
 
 if (failure) {
