@@ -1,0 +1,6 @@
+[submodule "contracts/lib/contracts-v2"]
+	path = contracts/lib/contracts-v2
+	url = https://github.com/ensdomains/contracts-v2
+[submodule "contracts/lib/forge-std"]
+	path = contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

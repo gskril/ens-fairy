@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @dev The parts of the ENSv2 .eth registry (a PermissionedRegistry) this uses.
-interface IETHRegistry {
-    /// @notice The label's current owner, or zero if it's expired or unregistered.
-    function findOwner(string calldata label) external view returns (address);
-
-    /// @notice The label's EAC resource. It changes whenever the name is
-    ///         registered again, but not on transfers, renewals, or role changes.
-    function getResource(uint256 anyId) external view returns (uint256);
-}
+import {IAddrResolver} from "@ens/contracts/resolvers/profiles/IAddrResolver.sol";
+import {IAddressResolver} from "@ens/contracts/resolvers/profiles/IAddressResolver.sol";
+import {IContentHashResolver} from "@ens/contracts/resolvers/profiles/IContentHashResolver.sol";
+import {IExtendedResolver} from "@ens/contracts/resolvers/profiles/IExtendedResolver.sol";
+import {ITextResolver} from "@ens/contracts/resolvers/profiles/ITextResolver.sol";
+import {IVersionableResolver} from "@ens/contracts/resolvers/profiles/IVersionableResolver.sol";
+import {COIN_TYPE_ETH, ENSIP19} from "@ens/contracts/utils/ENSIP19.sol";
+import {NameCoder} from "@ens/contracts/utils/NameCoder.sol";
+import {
+    IPermissionedRegistry
+} from "@ens/contracts-v2/registry/interfaces/IPermissionedRegistry.sol";
+import {LibLabel} from "@ens/contracts-v2/utils/LibLabel.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /// @title FairyResolver
 /// @notice A shared resolver for .eth names gifted through ENS Fairy.
@@ -29,50 +33,27 @@ interface IETHRegistry {
 /// instead of inheriting the previous owner's.
 ///
 /// Setters take the DNS-encoded name (like the ENSv2 PermissionedResolver),
-/// so the ENS manager app recognizes them and can edit records. Reads go
+/// so the ENS manager app recognizes them and can edit records. Reads only go
 /// through ENSIP-10 `resolve`, which is how the Universal Resolver calls
-/// resolvers that support it.
+/// resolvers that support it; a bare namehash can't identify a registration.
 ///
 /// Only second-level .eth names are supported. The contract has no owner, no
 /// admin functions, and isn't upgradeable.
-contract FairyResolver {
-    ////////////////////////////////////////////////////////////////////////
-    // Constants
-    ////////////////////////////////////////////////////////////////////////
-
-    /// @dev namehash("eth")
-    bytes32 private constant ETH_NODE =
-        0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae;
-
-    uint256 private constant COIN_TYPE_ETH = 60;
-
-    // Profile selectors served through `resolve`
-    bytes4 private constant ADDR_SELECTOR = 0x3b3b57de; // addr(bytes32)
-    bytes4 private constant ADDR_COIN_SELECTOR = 0xf1cb7e06; // addr(bytes32,uint256)
-    bytes4 private constant TEXT_SELECTOR = 0x59d1d43c; // text(bytes32,string)
-    bytes4 private constant CONTENTHASH_SELECTOR = 0xbc1c58d1; // contenthash(bytes32)
-
-    // ERC-165 interface ids
-    bytes4 private constant ERC165_INTERFACE = 0x01ffc9a7;
-    bytes4 private constant EXTENDED_RESOLVER_INTERFACE = 0x9061b923; // resolve(bytes,bytes)
-    /// @dev The ENS manager probes this id to choose name-based setters.
-    bytes4 private constant ADDRESS_SETTER_INTERFACE =
-        bytes4(keccak256("setAddress(bytes,uint256,bytes)"));
-
+contract FairyResolver is ERC165, IExtendedResolver {
     ////////////////////////////////////////////////////////////////////////
     // Storage
     ////////////////////////////////////////////////////////////////////////
 
     /// @notice The ENSv2 .eth registry that decides who owns each name.
-    IETHRegistry public immutable ETH_REGISTRY;
+    IPermissionedRegistry public immutable ETH_REGISTRY;
 
     /// @notice Bumped by `clearRecords` to drop every record for a registration.
     mapping(uint256 resource => uint64 version) public recordVersions;
 
     /// @dev Every record lives under a key derived from the registration's
     ///      resource and its clear-version, see `_recordKey`.
-    mapping(bytes32 recordKey => mapping(uint256 coinType => bytes addressBytes))
-        private _addresses;
+    mapping(bytes32 recordKey => mapping(uint256 coinType => bytes addressBytes)) private
+        _addresses;
 
     /// @dev Distinguishes an explicitly set (possibly empty) address from one
     ///      that was never set, which falls back to the owner for ETH.
@@ -89,10 +70,6 @@ contract FairyResolver {
     // Events
     ////////////////////////////////////////////////////////////////////////
 
-    event AddressChanged(bytes32 indexed node, uint256 coinType, bytes newAddress);
-    event TextChanged(bytes32 indexed node, string indexed indexedKey, string key, string value);
-    event ContenthashChanged(bytes32 indexed node, bytes hash);
-    event VersionChanged(bytes32 indexed node, uint64 newVersion);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     ////////////////////////////////////////////////////////////////////////
@@ -105,7 +82,7 @@ contract FairyResolver {
     /// @notice The caller doesn't own the name and isn't an approved operator.
     error Unauthorized(bytes name, address account);
 
-    /// @notice An ETH address must be empty or exactly 20 bytes.
+    /// @notice EVM addresses must be empty or exactly 20 bytes.
     error InvalidEVMAddress(bytes addressBytes);
 
     /// @notice `resolve` was asked for a profile this resolver doesn't serve.
@@ -118,8 +95,16 @@ contract FairyResolver {
     ////////////////////////////////////////////////////////////////////////
 
     /// @param ethRegistry The ENSv2 .eth registry.
-    constructor(IETHRegistry ethRegistry) {
+    constructor(IPermissionedRegistry ethRegistry) {
         ETH_REGISTRY = ethRegistry;
+    }
+
+    /// @inheritdoc ERC165
+    /// @dev Advertises name-based setters, which the ENS manager probes for
+    ///      with the `setAddress(bytes,uint256,bytes)` selector.
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IExtendedResolver).interfaceId
+            || interfaceId == this.setAddress.selector || super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -132,13 +117,15 @@ contract FairyResolver {
         external
     {
         (bytes32 node, uint256 resource) = _authorize(name);
-        if (coinType == COIN_TYPE_ETH && addressBytes.length != 0 && addressBytes.length != 20) {
+        if (
+            addressBytes.length != 0 && addressBytes.length != 20 && ENSIP19.isEVMCoinType(coinType)
+        ) {
             revert InvalidEVMAddress(addressBytes);
         }
         bytes32 recordKey = _recordKey(resource);
         _addresses[recordKey][coinType] = addressBytes;
         _addressIsSet[recordKey][coinType] = true;
-        emit AddressChanged(node, coinType, addressBytes);
+        emit IAddressResolver.AddressChanged(node, coinType, addressBytes);
     }
 
     /// @notice Set a text record. An empty value removes it.
@@ -146,7 +133,7 @@ contract FairyResolver {
     function setText(bytes calldata name, string calldata key, string calldata value) external {
         (bytes32 node, uint256 resource) = _authorize(name);
         _texts[_recordKey(resource)][key] = value;
-        emit TextChanged(node, key, key, value);
+        emit ITextResolver.TextChanged(node, key, key, value);
     }
 
     /// @notice Set the contenthash. An empty value removes it.
@@ -154,15 +141,14 @@ contract FairyResolver {
     function setContenthash(bytes calldata name, bytes calldata hash) external {
         (bytes32 node, uint256 resource) = _authorize(name);
         _contenthashes[_recordKey(resource)] = hash;
-        emit ContenthashChanged(node, hash);
+        emit IContentHashResolver.ContenthashChanged(node, hash);
     }
 
     /// @notice Remove every record. The ETH address goes back to the owner.
     /// @param name The DNS-encoded name.
     function clearRecords(bytes calldata name) external {
         (bytes32 node, uint256 resource) = _authorize(name);
-        uint64 version = ++recordVersions[resource];
-        emit VersionChanged(node, version);
+        emit IVersionableResolver.VersionChanged(node, ++recordVersions[resource]);
     }
 
     /// @notice Let `operator` manage records for every name the caller owns.
@@ -190,33 +176,33 @@ contract FairyResolver {
     // Reads
     ////////////////////////////////////////////////////////////////////////
 
-    /// @notice ENSIP-10 resolution. Answers `addr`, `addr` with a coin type,
-    ///         `text`, and `contenthash` for `name`.
-    /// @param name The DNS-encoded name.
-    /// @param data The ABI-encoded profile call. Its node argument is ignored
-    ///        in favor of the namehash of `name`.
+    /// @inheritdoc IExtendedResolver
+    /// @dev Answers `addr`, `addr` with a coin type, `text`, and `contenthash`.
+    ///      The node argument inside `data` is ignored in favor of `name`.
     function resolve(bytes calldata name, bytes calldata data)
         external
         view
         returns (bytes memory)
     {
-        (, string calldata label) = _parseName(name);
+        (, string memory label) = _parseName(name);
         bytes32 recordKey = _recordKey(_resource(label));
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes4 selector = bytes4(data);
 
-        if (selector == ADDR_SELECTOR) {
+        if (selector == IAddrResolver.addr.selector) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return abi.encode(address(bytes20(_ethAddress(recordKey, label))));
         }
-        if (selector == ADDR_COIN_SELECTOR) {
+        if (selector == IAddressResolver.addr.selector) {
             (, uint256 coinType) = abi.decode(data[4:], (bytes32, uint256));
             if (coinType == COIN_TYPE_ETH) return abi.encode(_ethAddress(recordKey, label));
             return abi.encode(_addresses[recordKey][coinType]);
         }
-        if (selector == TEXT_SELECTOR) {
+        if (selector == ITextResolver.text.selector) {
             (, string memory key) = abi.decode(data[4:], (bytes32, string));
             return abi.encode(_texts[recordKey][key]);
         }
-        if (selector == CONTENTHASH_SELECTOR) {
+        if (selector == IContentHashResolver.contenthash.selector) {
             return abi.encode(_contenthashes[recordKey]);
         }
         revert UnsupportedResolverProfile(selector);
@@ -225,27 +211,16 @@ contract FairyResolver {
     /// @notice The current owner of `name` in the ENSv2 .eth registry.
     /// @param name The DNS-encoded name.
     function ownerOf(bytes calldata name) external view returns (address) {
-        (, string calldata label) = _parseName(name);
+        (, string memory label) = _parseName(name);
         return _owner(label);
     }
 
     /// @notice Whether `account` can write records for `name`.
     /// @param name The DNS-encoded name.
     function canModifyName(bytes calldata name, address account) external view returns (bool) {
-        (, string calldata label) = _parseName(name);
+        (, string memory label) = _parseName(name);
         address owner = _owner(label);
         return owner != address(0) && (account == owner || isApprovedForAll[owner][account]);
-    }
-
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return
-            interfaceId == ERC165_INTERFACE ||
-            interfaceId == EXTENDED_RESOLVER_INTERFACE ||
-            interfaceId == ADDRESS_SETTER_INTERFACE ||
-            interfaceId == ADDR_SELECTOR ||
-            interfaceId == ADDR_COIN_SELECTOR ||
-            interfaceId == TEXT_SELECTOR ||
-            interfaceId == CONTENTHASH_SELECTOR;
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -253,12 +228,8 @@ contract FairyResolver {
     ////////////////////////////////////////////////////////////////////////
 
     /// @dev Reverts unless the caller owns `name` or is an approved operator.
-    function _authorize(bytes calldata name)
-        private
-        view
-        returns (bytes32 node, uint256 resource)
-    {
-        string calldata label;
+    function _authorize(bytes calldata name) private view returns (bytes32 node, uint256 resource) {
+        string memory label;
         (node, label) = _parseName(name);
         address owner = _owner(label);
         if (owner == address(0) || (msg.sender != owner && !isApprovedForAll[owner][msg.sender])) {
@@ -268,7 +239,7 @@ contract FairyResolver {
     }
 
     /// @dev The explicit ETH address, or the owner's if none was ever set.
-    function _ethAddress(bytes32 recordKey, string calldata label)
+    function _ethAddress(bytes32 recordKey, string memory label)
         private
         view
         returns (bytes memory)
@@ -285,33 +256,27 @@ contract FairyResolver {
         return keccak256(abi.encode(resource, recordVersions[resource]));
     }
 
-    function _owner(string calldata label) private view returns (address) {
-        return ETH_REGISTRY.findOwner(label);
+    /// @dev Zero once the name expires.
+    function _owner(string memory label) private view returns (address) {
+        return ETH_REGISTRY.getOwner(LibLabel.id(label));
     }
 
-    function _resource(string calldata label) private view returns (uint256) {
-        return ETH_REGISTRY.getResource(uint256(keccak256(bytes(label))));
+    /// @dev Changes when the name is registered again, but not on transfers,
+    ///      renewals, or role changes.
+    function _resource(string memory label) private view returns (uint256) {
+        return ETH_REGISTRY.getResource(LibLabel.id(label));
     }
 
-    /// @dev Parses `\x{len}label\x03eth\x00` into its namehash and label.
+    /// @dev Accepts only `{label}.eth`, returning its namehash and label.
     function _parseName(bytes calldata name)
         private
         pure
-        returns (bytes32 node, string calldata label)
+        returns (bytes32 node, string memory label)
     {
-        uint256 length = name.length > 0 ? uint8(name[0]) : 0;
-        if (
-            length == 0 ||
-            name.length != length + 6 ||
-            name[length + 1] != 0x03 ||
-            name[length + 2] != "e" ||
-            name[length + 3] != "t" ||
-            name[length + 4] != "h" ||
-            name[length + 5] != 0x00
-        ) {
+        (label,) = NameCoder.extractLabel(name, 0);
+        if (bytes(label).length == 0 || keccak256(NameCoder.ethName(label)) != keccak256(name)) {
             revert UnsupportedName(name);
         }
-        label = string(name[1:length + 1]);
-        node = keccak256(abi.encodePacked(ETH_NODE, keccak256(bytes(label))));
+        node = NameCoder.namehash(name, 0);
     }
 }

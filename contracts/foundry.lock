@@ -1,0 +1,14 @@
+{
+  "lib/contracts-v2": {
+    "tag": {
+      "name": "v2-mainnet-deployment-1",
+      "rev": "62778d80038e50cb23514eab1b7d66ceb8a41e1c"
+    }
+  },
+  "lib/forge-std": {
+    "tag": {
+      "name": "v1.17.0",
+      "rev": "f3dae6e6ee381f25eb6a246f7da9b85c91a68219"
+    }
+  }
+}

@@ -15,12 +15,10 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true
+    "allowImportingTsExtensions": true
   },
   "include": [
     "vite.config.ts",
-    "scripts",
-    "contracts"
+    "scripts"
   ]
 }

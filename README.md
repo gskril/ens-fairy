@@ -61,12 +61,22 @@ bun run deploy
 - **Editable in the ENS manager.** Setters take the DNS-encoded name (`setAddress(bytes,uint256,bytes)`, `setText`, `setContenthash`, `clearRecords`, `multicall`), which the manager detects and writes through.
 - **Basic profiles only.** It serves addresses, text records and contenthash through ENSIP-10 `resolve`, for second-level .eth names. No EAC roles.
 
+It's a [Foundry](https://getfoundry.sh) project that builds on ENS's own code: [contracts-v2](https://github.com/ensdomains/contracts-v2) is a submodule pinned to `v2-mainnet-deployment-1`, and the resolver profile interfaces, `NameCoder`, `ENSIP19` and the registry interfaces all come from it (and the ens-contracts and OpenZeppelin versions it pins).
+
 ```bash
-bun run contracts:test                                 # compile + integration test against live Sepolia (eth_simulateV1)
-DEPLOYER_KEY=0x... bun run contracts:deploy sepolia    # or mainnet
+git submodule update --init --recursive   # first time only
+cd contracts
+forge build
+forge test                                # forks Sepolia: real registrations, resolved through the Universal Resolver
 ```
 
-Then set `VITE_FAIRY_RESOLVER_11155111` (or `VITE_FAIRY_RESOLVER_1`) to the deployed address and rebuild. Without it, gifts deploy a per-name PermissionedResolver.
+Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to a public RPC. To deploy:
+
+```bash
+forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <keystore>   # or mainnet
+```
+
+Then set `VITE_FAIRY_RESOLVER_11155111` (or `VITE_FAIRY_RESOLVER_1`) to the printed address and rebuild. Without it, gifts deploy a per-name PermissionedResolver.
 
 ## Brand assets
 
