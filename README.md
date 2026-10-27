@@ -81,6 +81,8 @@ Tests fork Sepolia over `SEPOLIA_RPC_URL`, falling back to PublicNode. The `main
 forge script script/DeployFairyResolver.s.sol --rpc-url sepolia --broadcast --account <keystore>   # or mainnet
 ```
 
+The script deploys with CREATE2 through the [deterministic deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy), so FairyResolver gets the same address on mainnet and Sepolia. The contract picks the chain's .eth registry itself, which keeps its creation code identical across chains, and the metadata hash is left out of the bytecode so comment changes don't move the address. Code changes do, so deploy both chains from the same commit. Re-running the script on a chain where it's already deployed does nothing.
+
 Then set that chain's address in [`src/lib/contracts.ts`](src/lib/contracts.ts). Until it's set, that chain shows the maintenance screen.
 
 ## Brand assets

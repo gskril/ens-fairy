@@ -68,6 +68,10 @@ import {ERC165Checker} from "@openzeppelin/utils/introspection/ERC165Checker.sol
 ///
 /// Only second-level .eth names are supported. The contract has no owner, no
 /// admin functions, and isn't upgradeable.
+///
+/// The constructor takes no arguments and picks the .eth registry for the
+/// chain it's deployed on, so the creation code is identical everywhere and a
+/// CREATE2 deploy lands at the same address on mainnet and Sepolia.
 contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     ////////////////////////////////////////////////////////////////////////
     // Storage
@@ -119,13 +123,15 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
     /// @notice Owners can't approve themselves.
     error InvalidApproval();
 
+    /// @notice The contract was deployed on a chain without a known .eth registry.
+    error UnsupportedChain(uint256 chainId);
+
     ////////////////////////////////////////////////////////////////////////
     // Initialization
     ////////////////////////////////////////////////////////////////////////
 
-    /// @param ethRegistry The ENSv2 .eth registry.
-    constructor(IPermissionedRegistry ethRegistry) {
-        ETH_REGISTRY = ethRegistry;
+    constructor() {
+        ETH_REGISTRY = IPermissionedRegistry(_ethRegistry(block.chainid));
         emit ResolverCreated();
     }
 
@@ -446,6 +452,13 @@ contract FairyResolver is ERC165, IRecordResolver, IERC7996 {
         IPermissionedRegistry.State memory state = ETH_REGISTRY.getState(LibLabel.id(label));
         if (state.status == IPermissionedRegistry.Status.REGISTERED) owner = state.latestOwner;
         resource = state.resource;
+    }
+
+    /// @dev ENSv2 .eth registries (what @ensdomains/ensjs calls `ensRegistry`).
+    function _ethRegistry(uint256 chainId) private pure returns (address) {
+        if (chainId == 1) return 0xf60aba43E1f7F3DAB1186Ff03B561401C9Df85E2;
+        if (chainId == 11155111) return 0xD4eBcbBdF463C9c45784603Db0dDD499BC44A8B4;
+        revert UnsupportedChain(chainId);
     }
 
     /// @dev Accepts only `{label}.eth`, returning its namehash and label.

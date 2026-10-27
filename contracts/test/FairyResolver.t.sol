@@ -66,7 +66,8 @@ contract FairyResolverTest is Test {
         vm.createSelectFork(
             vm.envOr("SEPOLIA_RPC_URL", string("https://ethereum-sepolia-rpc.publicnode.com"))
         );
-        resolver = new FairyResolver(ETH_REGISTRY);
+        resolver = new FairyResolver();
+        assertEq(address(resolver.ETH_REGISTRY()), address(ETH_REGISTRY));
 
         label = string.concat("fairytest", vm.toString(block.timestamp));
         require(REGISTRAR.isAvailable(label), "test label is taken");
@@ -417,6 +418,16 @@ contract FairyResolverTest is Test {
             abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, recipient)
         );
         resolver.setText(name, "description", "nope");
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // Deployment
+    ////////////////////////////////////////////////////////////////////////
+
+    function test_rejectsUnknownChains() public {
+        vm.chainId(10);
+        vm.expectRevert(abi.encodeWithSelector(FairyResolver.UnsupportedChain.selector, 10));
+        new FairyResolver();
     }
 
     ////////////////////////////////////////////////////////////////////////
