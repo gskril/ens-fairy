@@ -1,0 +1,11 @@
+@ens/v2/=lib/contracts-v2/contracts/src/
+@ens/=lib/contracts-v2/contracts/lib/ens-contracts/contracts/
+@openzeppelin/=lib/contracts-v2/contracts/lib/openzeppelin-contracts/contracts/
+forge-std/=lib/forge-std/src/
+lib/contracts-v2/contracts/:@ens/contracts/=lib/contracts-v2/contracts/lib/ens-contracts/contracts/
+lib/contracts-v2/contracts/:@openzeppelin/contracts/=lib/contracts-v2/contracts/lib/openzeppelin-contracts/contracts/
+lib/contracts-v2/contracts/:@openzeppelin/contracts-upgradeable/=lib/contracts-v2/contracts/lib/openzeppelin-contracts-upgradeable/contracts/
+lib/contracts-v2/contracts/:@ensdomains/verifiable-factory/=lib/contracts-v2/contracts/lib/verifiable-factory/src/
+lib/contracts-v2/contracts/lib/ens-contracts/contracts/utils/LibMem/=lib/contracts-v2/contracts/src/utils/
+lib/contracts-v2/contracts/lib/ens-contracts/:@openzeppelin/contracts=lib/contracts-v2/contracts/lib/openzeppelin-contracts-v4/contracts
+lib/contracts-v2/contracts/lib/ens-contracts/:@openzeppelin/contracts-v5=lib/contracts-v2/contracts/lib/openzeppelin-contracts/contracts

@@ -1,0 +1,264 @@
+import { eacErrors } from '@ensdomains/ensjs-abi/v2/enhancedAccessControl'
+import { ethRegistrarErrors } from '@ensdomains/ensjs-abi/v2/ethRegistrar'
+import {
+  type ChainWithContracts,
+  getChainContractAddress,
+} from '@ensdomains/ensjs/chain'
+import { getRegisterPrice } from '@ensdomains/ensjs/public'
+import {
+  commitNameWriteParameters,
+  registerNameWriteParameters,
+} from '@ensdomains/ensjs/wallet'
+import {
+  type Account,
+  type Address,
+  BaseError,
+  type Client,
+  ContractFunctionRevertedError,
+  type Hex,
+  type Transport,
+  decodeErrorResult,
+  encodeFunctionData,
+  erc20Abi,
+  formatUnits,
+  parseAbi,
+} from 'viem'
+import { toAccount } from 'viem/accounts'
+import { getBlock, simulateBlocks } from 'viem/actions'
+
+/** A chain with every ENS contract the gift flow touches. */
+export type EnsChain = ChainWithContracts<
+  | 'ensEthRegistrar'
+  | 'ensUniversalResolver'
+  | 'ensUniversalHelper'
+  | 'usdc'
+  | 'dai'
+>
+
+export const SECONDS_PER_YEAR = 31_536_000
+
+export const PAYMENT_TOKENS = {
+  usdc: { symbol: 'USDC', decimals: 6 },
+  dai: { symbol: 'DAI', decimals: 18 },
+} as const
+
+export type PaymentToken = keyof typeof PAYMENT_TOKENS
+
+export function getPaymentTokenAddress(chain: EnsChain, token: PaymentToken) {
+  return getChainContractAddress({ chain, contract: token })
+}
+
+export function getRegistrarAddress(chain: EnsChain) {
+  return getChainContractAddress({ chain, contract: 'ensEthRegistrar' })
+}
+
+export function formatTokenAmount(amount: bigint, token: PaymentToken) {
+  const value = Number(formatUnits(amount, PAYMENT_TOKENS[token].decimals))
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+export function yearsToSeconds(years: number) {
+  return Math.round(years * SECONDS_PER_YEAR)
+}
+
+export async function getGiftPrice(
+  client: Client<Transport, EnsChain>,
+  { label, years, token }: { label: string; years: number; token: PaymentToken }
+) {
+  const { base, premium } = await getRegisterPrice(client, {
+    label,
+    duration: BigInt(yearsToSeconds(years)),
+    paymentToken: getPaymentTokenAddress(client.chain, token),
+  })
+
+  return { base, premium, total: base + premium }
+}
+
+export type RegistrationParams = {
+  label: string
+  owner: Address
+  duration: number
+  secret: Hex
+  resolverAddress: Address
+  paymentToken: Address
+}
+
+export function getRegisterWriteParameters(
+  wallet: Client<Transport, EnsChain, Account>,
+  params: RegistrationParams
+) {
+  return registerNameWriteParameters(wallet, params)
+}
+
+export type GiftCall = { to: Address; data: Hex }
+
+export type GiftSetup = {
+  account: Address
+  label: string
+  recipient: Address
+  years: number
+  token: PaymentToken
+  secret: Hex
+  resolverAddress: Address
+}
+
+function asSender(client: Client<Transport, EnsChain>, account: Address) {
+  // Write-parameter builders only read `chain` and `account` from the client
+  return { ...client, account: toAccount(account) } as Client<
+    Transport,
+    EnsChain,
+    Account
+  >
+}
+
+/**
+ * Builds every call in a gift as raw `{ to, data }`, so the same calls can be
+ * simulated, sent one at a time, or batched with `wallet_sendCalls`.
+ */
+export function getGiftCalls(
+  client: Client<Transport, EnsChain>,
+  setup: GiftSetup & { approveAmount: bigint }
+) {
+  const { account, label, recipient, years, token, secret } = setup
+  const sender = asSender(client, account)
+  const paymentToken = getPaymentTokenAddress(client.chain, token)
+  const registration = {
+    label,
+    owner: recipient,
+    duration: yearsToSeconds(years),
+    secret,
+    resolverAddress: setup.resolverAddress,
+  }
+  const commit = commitNameWriteParameters(sender, registration)
+  const register = registerNameWriteParameters(sender, {
+    ...registration,
+    paymentToken,
+  })
+
+  return {
+    approve: {
+      to: paymentToken,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [getRegistrarAddress(client.chain), setup.approveAmount],
+      }),
+    } satisfies GiftCall,
+    commit: {
+      to: commit.address,
+      data: encodeFunctionData({
+        abi: commit.abi,
+        functionName: commit.functionName,
+        args: commit.args,
+      }),
+    } satisfies GiftCall,
+    register: {
+      to: register.address,
+      data: encodeFunctionData({
+        abi: register.abi,
+        functionName: register.functionName,
+        args: register.args,
+      }),
+    } satisfies GiftCall,
+  }
+}
+
+/**
+ * Replays the whole gift (approval, commit, and a register after the
+ * waiting period) against current chain state with `eth_simulateV1`, so a gift
+ * that would fail is caught before any gas is spent. Resolves to the first
+ * failing call's error, or `undefined` if everything succeeds. Throws if the
+ * RPC doesn't support simulation.
+ */
+export async function dryRunGift(
+  client: Client<Transport, EnsChain>,
+  setup: GiftSetup
+) {
+  const { total } = await getGiftPrice(client, setup)
+  const calls = getGiftCalls(client, { ...setup, approveAmount: total })
+  const { timestamp } = await getBlock(client)
+  const from = (c: GiftCall) => ({ account: setup.account, ...c })
+
+  const blocks = await simulateBlocks(client, {
+    blocks: [
+      {
+        calls: [from(calls.approve), from(calls.commit)],
+      },
+      {
+        blockOverrides: { time: timestamp + 600n },
+        calls: [from(calls.register)],
+      },
+    ],
+  })
+
+  for (const block of blocks) {
+    for (const result of block.calls) {
+      if (result.status === 'failure') return result.error
+    }
+  }
+
+  return undefined
+}
+
+/** Errors that can bubble up from contracts the registrar calls into */
+const knownErrors = [
+  ...ethRegistrarErrors,
+  ...eacErrors,
+  ...parseAbi([
+    'error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)',
+    'error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)',
+  ]),
+]
+
+/** Returns the decoded custom error name and args from a contract revert. */
+export function getRevertError(err: unknown) {
+  if (!(err instanceof BaseError)) return undefined
+  const revert = err.walk((e) => e instanceof ContractFunctionRevertedError)
+  if (!(revert instanceof ContractFunctionRevertedError)) return undefined
+  if (revert.data) {
+    return { name: revert.data.errorName, args: revert.data.args ?? [] }
+  }
+  if (!revert.raw) return undefined
+  try {
+    const decoded = decodeErrorResult({ abi: knownErrors, data: revert.raw })
+    return { name: decoded.errorName, args: decoded.args ?? [] }
+  } catch {
+    return undefined
+  }
+}
+
+export function getErrorMessage(err: unknown) {
+  const revert = getRevertError(err)
+  if (revert) {
+    switch (revert.name) {
+      case 'NameNotAvailable':
+        return 'This name was just registered by someone else'
+      case 'CommitmentTooOld':
+        return 'Your reservation expired, please start again'
+      case 'PaymentTokenNotSupported':
+        return 'That payment token is not supported'
+      case 'SafeERC20FailedOperation':
+        return 'Token transfer failed. Check your balance and approval'
+      case 'ERC20InsufficientBalance':
+        return 'Not enough tokens to pay for this name'
+      case 'ERC20InsufficientAllowance':
+        return 'Token approval is too low, please try again'
+      case 'EACUnauthorizedAccountRoles':
+        return "The ENS registrar isn't accepting registrations on this network yet"
+      default:
+        return `Transaction would fail (${revert.name})`
+    }
+  }
+
+  if (err instanceof BaseError) {
+    if (err.walk((e) => (e as { code?: number }).code === 4001)) {
+      return 'Transaction rejected'
+    }
+    return err.shortMessage
+  }
+
+  return err instanceof Error ? err.message : 'Something went wrong'
+}

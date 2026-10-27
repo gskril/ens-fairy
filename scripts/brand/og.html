@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500&family=Geist+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; overflow: hidden; position: relative;
+    background-color: #f6f6f6;
+    background-image: radial-gradient(circle, rgba(0,128,188,.18) 1.4px, transparent 2px);
+    background-size: 30px 30px; background-position: 15px 15px;
+    font-family: 'Inter Tight', sans-serif; color: #011a25; }
+  .brand { position: absolute; top: 64px; left: 72px; display: flex; align-items: center; gap: 18px; font-size: 36px; font-weight: 500; letter-spacing: -0.03em; }
+  .brand img { width: 60px; height: 60px; }
+  h1 { position: absolute; left: 68px; top: 196px; font-size: 118px; font-weight: 500; letter-spacing: -0.035em; line-height: .96; }
+  .mono { font-family: 'Geist Mono', monospace; letter-spacing: -0.07em; word-spacing: -0.3em; }
+  .br { color: #cee1e8; font-family: 'Inter Tight'; font-weight: 400; }
+  p { position: absolute; left: 74px; top: 360px; width: 640px; font-family: 'Newsreader', serif; font-size: 38px; line-height: 1.22; color: #4a5c63; }
+  .url { position: absolute; left: 74px; bottom: 60px; font-family: 'Geist Mono'; font-size: 26px; color: #0080bc; font-weight: 500; }
+  .pill { position: absolute; font-family: 'Geist Mono'; font-weight: 500; font-size: 30px; padding: 10px 18px; border-radius: 12px; }
+  .pathway { position: absolute; right: -40px; bottom: -40px; }
+</style></head>
+<body>
+  <svg class="pathway" width="420" height="300" viewBox="-20 160 420 300">
+    <path d="M70 600 V330 Q70 190 210 190 H470" fill="none" stroke="#0080bc" stroke-width="150"/>
+    <path d="M70 600 V330 Q70 190 210 190 H470" fill="none" stroke="#f6f6f6" stroke-width="10"/>
+    <rect x="300" y="122" width="96" height="96" rx="18" fill="#f6f6f6"/>
+  </svg>
+  <div class="brand"><img src="../../public/logo.svg" alt="">ENS Fairy</div>
+  <h1>Gift an <span class="mono"><span class="br">[</span>ENS name<span class="br">]</span></span></h1>
+  <p>Register a .eth name directly to someone else's wallet.</p>
+  <div class="url">ensfairy.xyz</div>
+  <div class="pill" style="left:760px; top:62px; background:#f2c4da; color:#f53293">mom.eth</div>
+  <div class="pill" style="left:930px; top:126px; background:#cee1e8; color:#0080bc">alice.eth</div>
+  <div class="pill" style="left:780px; top:430px; background:#c5ddcc; color:#007c23">gm.eth</div>
+</body></html>

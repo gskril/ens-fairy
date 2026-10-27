@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development. In production, set these with
+# `wrangler secret put <NAME>`. Both are optional; public RPCs are used otherwise.
+MAINNET_RPC_URL=
+SEPOLIA_RPC_URL=

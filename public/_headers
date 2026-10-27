@@ -1,0 +1,11 @@
+# Security headers for static assets (https://developers.cloudflare.com/workers/static-assets/headers/)
+#
+# connect-src and img-src allow any https origin on purpose: ENS resolution can
+# hit arbitrary CCIP Read gateways, and avatars can be served from any host.
+# style-src needs 'unsafe-inline' for react-hot-toast and WalletConnect, which
+# inject styles at runtime. frame-src is for WalletConnect's verify iframe.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://verify.walletconnect.org https://verify.walletconnect.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

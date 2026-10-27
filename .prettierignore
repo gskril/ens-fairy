@@ -1,0 +1,8 @@
+dist
+.wrangler
+node_modules
+bun.lock
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast

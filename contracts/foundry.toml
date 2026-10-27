@@ -1,0 +1,27 @@
+# https://book.getfoundry.sh/reference/config/overview
+
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.37"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 10_000
+# Leave the metadata hash out of the bytecode so comment-only changes don't
+# move FairyResolver's CREATE2 address
+bytecode_hash = "none"
+cbor_metadata = false
+ignored_warnings_from = ["lib/"]
+
+# Public defaults. Foundry can't fall back from an unset env var, so pass
+# `--rpc-url $SEPOLIA_RPC_URL` directly to use a private endpoint.
+[rpc_endpoints]
+mainnet = "https://ethereum-rpc.publicnode.com"
+sepolia = "https://ethereum-sepolia-rpc.publicnode.com"
+
+[fmt]
+line_length = 100
+
+[lint]
+lint_on_build = false
