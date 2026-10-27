@@ -113,6 +113,8 @@ export function stepStatus(state: GiftState, step: StepId) {
     return 'skipped'
   }
   if (current > index) return 'done'
+  // The wait is over once the commit is ready, even before Register is pressed
+  if (step === 'wait' && state.ready && current === index) return 'done'
   if (current === index) return state.error ? 'error' : 'active'
   return 'pending'
 }
