@@ -84,12 +84,16 @@ type Draft = {
   commitHash?: Hash
 }
 
-/** Whether the connected wallet can run calls atomically (EIP-5792). */
+/**
+ * Whether the connected wallet can run calls atomically (EIP-5792). Only
+ * `supported` counts, matching the official ENS apps: `ready` means sending a
+ * batch would prompt an EIP-7702 upgrade of the user's account, which a gift
+ * shouldn't trigger.
+ */
 async function supportsAtomicBatch(chainId: SupportedChainId) {
   try {
     const capabilities = await getCapabilities(config, { chainId })
-    const status = capabilities.atomic?.status
-    return status === 'supported' || status === 'ready'
+    return capabilities.atomic?.status === 'supported'
   } catch {
     return false
   }
