@@ -267,6 +267,47 @@ contract FairyResolverTest is Test {
         assertEq(_resolveText("description"), "gifted with ENS Fairy");
     }
 
+    function test_nestedMulticallRejectsUnauthorizedWrites() public {
+        _gift(gifter, recipient);
+
+        bytes[] memory inner = new bytes[](1);
+        inner[0] = abi.encodeCall(resolver.setAddress, (name, 60, abi.encodePacked(stranger)));
+        bytes[] memory outer = new bytes[](1);
+        outer[0] = abi.encodeCall(resolver.multicall, (inner));
+
+        vm.expectRevert(abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, stranger));
+        vm.prank(stranger);
+        resolver.multicall(outer);
+
+        (address resolved,) = _resolveAddr();
+        assertEq(resolved, recipient);
+    }
+
+    function test_multicallRevertsEarlierWritesOnUnauthorizedCall() public {
+        _gift(gifter, recipient);
+        // Register another name while keeping the original name and node for assertions.
+        string memory firstLabel = label;
+        label = string.concat(firstLabel, "other");
+        bytes memory otherName = NameCoder.ethName(label);
+        _gift(gifter, stranger);
+        label = firstLabel;
+
+        vm.prank(recipient);
+        resolver.setText(name, "description", "original");
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(resolver.setText, (name, "description", "must roll back"));
+        calls[1] = abi.encodeCall(resolver.setText, (otherName, "description", "unauthorized"));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(FairyResolver.Unauthorized.selector, otherName, recipient)
+        );
+        vm.prank(recipient);
+        resolver.multicall(calls);
+
+        assertEq(_resolveText("description"), "original");
+    }
+
     function test_clearRecordsRestoresOwnerDefault() public {
         _gift(gifter, recipient);
 
@@ -418,6 +459,33 @@ contract FairyResolverTest is Test {
             abi.encodeWithSelector(FairyResolver.Unauthorized.selector, name, recipient)
         );
         resolver.setText(name, "description", "nope");
+    }
+
+    function test_sameOwnerReregistrationPreservesDelegateApproval() public {
+        _gift(gifter, recipient);
+        vm.startPrank(recipient);
+        resolver.approve(node, delegate, true);
+        resolver.setAddress(name, 60, abi.encodePacked(elsewhere));
+        resolver.setText(name, "description", "old registration");
+        vm.stopPrank();
+        uint256 previousRecordId = resolver.getRecordId(name);
+
+        vm.warp(block.timestamp + 2 * DURATION);
+        assertFalse(resolver.canModifyName(name, delegate));
+        _gift(gifter, recipient);
+
+        assertNotEq(resolver.getRecordId(name), previousRecordId);
+        assertEq(_resolveText("description"), "");
+        (address resolved,) = _resolveAddr();
+        assertEq(resolved, recipient);
+
+        // Per-name approvals belong to the owner and name, so a fresh registration
+        // to the same owner retains them even though the records reset.
+        assertTrue(resolver.canModifyName(name, delegate));
+        vm.prank(delegate);
+        resolver.setAddress(name, 60, abi.encodePacked(stranger));
+        (resolved,) = _resolveAddr();
+        assertEq(resolved, stranger);
     }
 
     ////////////////////////////////////////////////////////////////////////
