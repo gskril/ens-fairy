@@ -198,7 +198,7 @@ export function Admin() {
             )}
             {scan && !running && (
               <Button
-                tone="ghost"
+                tone="secondary"
                 onClick={() => run(rpcInput.trim(), true)}
                 disabled={!rpcInput.trim()}
               >
