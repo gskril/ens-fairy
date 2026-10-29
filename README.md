@@ -48,6 +48,12 @@ bun run check sepolia  # needs CHECK_ACCOUNT set to an address holding test USDC
 
 This dry-runs a full gift against live chain state and reports whether it would succeed.
 
+### Registrations page
+
+[`/admin`](https://ensfairy.xyz/admin) shows a timeline of names registered through the site. Every registration credits `ensfairy.eth` as the referrer, which the registrar's `NameRegistered` event indexes, so the page asks the RPC for exactly those logs. It needs no password, but it does need an RPC that serves `eth_getLogs` history, entered on the page and kept in that browser.
+
+The scan ([`src/lib/registrations.ts`](src/lib/registrations.ts)) walks backwards from the finalized block to the day the referrer shipped, halving its block range when the RPC rejects one as too wide. Progress is saved after every range, so later visits only scan the blocks added since.
+
 ## Deployment
 
 ```bash

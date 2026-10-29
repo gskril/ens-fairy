@@ -7,17 +7,22 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { WagmiProvider } from 'wagmi'
 
+import { Admin } from './Admin'
 import { App } from './App'
 import './globals'
 import { config } from './lib/wagmi'
 
 const queryClient = new QueryClient()
 
+// The only other page; the Worker serves index.html for every unknown path
+const Page =
+  window.location.pathname.replace(/\/$/, '') === '/admin' ? Admin : App
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <Page />
       </QueryClientProvider>
     </WagmiProvider>
   </StrictMode>
