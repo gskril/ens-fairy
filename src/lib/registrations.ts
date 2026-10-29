@@ -16,8 +16,8 @@ import { type SupportedChainId, getChain } from './wagmi'
  * NameRegistered logs for our referrer (an indexed topic, so the RPC filters).
  *
  * The scan follows the one in gskril/plainsafe: it walks backwards from the
- * finalized block so the newest registrations show up first, adapts its chunk
- * size to the RPC's range limits, and saves a checkpoint after every chunk so
+ * finalized block so the newest registrations show up first, steps its chunk
+ * size down to the RPC's range limit, and saves a checkpoint after every chunk so
  * a later visit only scans the blocks added since. Blocks above the finalized
  * one (the tip window) are re-fetched on every scan and never saved, so reorgs
  * need no bookkeeping.
@@ -29,12 +29,16 @@ const FLOORS: Record<SupportedChainId, bigint> = {
   11155111: 12_001_423n,
 }
 
-/** A range most paid RPCs accept (Alchemy, QuickNode, dRPC); wider ones are tried after */
-const INITIAL_CHUNK = 10_000n
-const MAX_CHUNK = 1_000_000n
+/**
+ * Ranges tried until the RPC accepts one: 1M, 100k, 10k, 1k, 100, 10, then 1.
+ * Free RPCs with log history (Tenderly, stupidtech) take 1M; paid ones mostly 10k.
+ */
+const INITIAL_CHUNK = 1_000_000n
+const CHUNK_DIVISOR = 10n
 /** Without a `finalized` tag, stay this far behind the tip */
 const FALLBACK_DEPTH = 96n
-const STORAGE_VERSION = 1
+// 2: chunk sizes step down tenfold from 1M, so older learned sizes are dropped
+const STORAGE_VERSION = 2
 
 export interface Registration {
   label: string
@@ -56,8 +60,6 @@ interface Checkpoint {
   /** The working chunk size is only valid for the RPC it was learned from */
   rpcUrl: string
   chunkSize: string
-  /** Half the smallest range the RPC rejected, so growth stops short of it */
-  chunkCeiling?: string
   /** Every block from scannedDownTo to finalizedHead has been scanned */
   finalizedHead?: string
   scannedDownTo?: string
@@ -114,7 +116,7 @@ const REFUSED =
   /4444|pruned|history (is )?(not )?available|archive|not supported|method not found|not allowed|not whitelisted|does not exist|personal token|api key|unauthorized/i
 
 /**
- * Range errors halve the chunk, refusals stop the scan, and anything else
+ * Range errors shrink the chunk, refusals stop the scan, and anything else
  * (timeouts, 429s, odd errors) is retried.
  */
 function classifyLogError(info: ErrorInfo): LogErrorKind {
@@ -192,7 +194,6 @@ function loadCheckpoint(chainId: number, rpcUrl: string): Checkpoint {
           ...stored,
           rpcUrl,
           chunkSize: fresh.chunkSize,
-          chunkCeiling: undefined,
         }
   } catch {
     return fresh
@@ -319,8 +320,8 @@ export async function scanRegistrations({
   }
 
   /**
-   * Scans [from, to] in chunks going one way, halving the chunk on range
-   * errors and doubling it after each success, and saves after every chunk.
+   * Scans [from, to] in chunks going one way, shrinking the chunk tenfold on
+   * each range error, and saves after every chunk.
    */
   const scanRange = async (
     direction: 'forward' | 'backward',
@@ -342,8 +343,8 @@ export async function scanRegistrations({
         if (signal.aborted) throw e
         const kind = classifyLogError(errorInfo(e))
         if (kind === 'range' && size > 1n) {
-          const half = (size / 2n).toString()
-          cp = { ...cp, chunkSize: half, chunkCeiling: half }
+          const smaller = size / CHUNK_DIVISOR
+          cp = { ...cp, chunkSize: (smaller > 1n ? smaller : 1n).toString() }
           continue
         }
         throw new ScanError(
@@ -352,12 +353,9 @@ export async function scanRegistrations({
             : `Your RPC doesn't serve historical logs: ${shortMessage(e)}`
         )
       }
-      const ceiling = cp.chunkCeiling ? BigInt(cp.chunkCeiling) : MAX_CHUNK
-      const chunkSize = (size * 2n > ceiling ? ceiling : size * 2n).toString()
       if (direction === 'forward') {
         commit({
           ...cp,
-          chunkSize,
           finalizedHead: end.toString(),
           registrations: [...found, ...cp.registrations],
         })
@@ -365,7 +363,6 @@ export async function scanRegistrations({
       } else {
         commit({
           ...cp,
-          chunkSize,
           scannedDownTo: start.toString(),
           registrations: [...cp.registrations, ...found],
         })

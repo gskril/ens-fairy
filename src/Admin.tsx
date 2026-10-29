@@ -37,6 +37,12 @@ const NETWORKS = [
   { chainId: sepolia.id, label: 'Sepolia' },
 ] as const
 
+/** Tenderly's free gateways serve log history in 1M-block ranges, with CORS */
+const DEFAULT_RPCS: Record<SupportedChainId, string> = {
+  [mainnet.id]: 'https://gateway.tenderly.co/public/mainnet',
+  [sepolia.id]: 'https://gateway.tenderly.co/public/sepolia',
+}
+
 const CHAIN_KEY = 'ens-fairy:admin-chain'
 const rpcKey = (chainId: number) => `ens-fairy:admin-rpc:${chainId}`
 
@@ -48,6 +54,9 @@ function read(key: string) {
   }
 }
 
+const savedRpc = (chainId: SupportedChainId) =>
+  read(rpcKey(chainId)) || DEFAULT_RPCS[chainId]
+
 function savedChain(): SupportedChainId {
   const chainId = Number(read(CHAIN_KEY))
   return isSupportedChain(chainId) ? chainId : mainnet.id
@@ -56,7 +65,7 @@ function savedChain(): SupportedChainId {
 /** A timeline of names registered through the site, read from any RPC with log history */
 export function Admin() {
   const [chainId, setChainId] = useState(savedChain)
-  const [rpcInput, setRpcInput] = useState(() => read(rpcKey(chainId)))
+  const [rpcInput, setRpcInput] = useState(() => savedRpc(chainId))
   const [scan, setScan] = useState<ScanState>()
   const [connectError, setConnectError] = useState<string>()
   const [running, setRunning] = useState(false)
@@ -73,12 +82,11 @@ export function Admin() {
 
   // Pick up where the last visit to this network left off
   useEffect(() => {
-    const rpcUrl = read(rpcKey(chainId))
+    const rpcUrl = savedRpc(chainId)
     setRpcInput(rpcUrl)
     setScan(undefined)
     setConnectError(undefined)
-    if (rpcUrl) run(rpcUrl)
-    else stop()
+    run(rpcUrl)
     return () => abort.current?.abort()
   }, [chainId])
 
@@ -97,7 +105,10 @@ export function Admin() {
     try {
       const client = await connectRpc(rpcUrl, chainId)
       if (controller.signal.aborted) return
-      localStorage.setItem(rpcKey(chainId), rpcUrl)
+      // Only a custom RPC is saved, so a changed default reaches everyone
+      if (rpcUrl === DEFAULT_RPCS[chainId])
+        localStorage.removeItem(rpcKey(chainId))
+      else localStorage.setItem(rpcKey(chainId), rpcUrl)
       if (fresh) clearCheckpoint(chainId)
       const result = await scanRegistrations({
         client,
@@ -172,7 +183,7 @@ export function Admin() {
             }
             value={rpcInput}
             error={connectError}
-            hint={`${getChain(chainId).name} RPC that serves eth_getLogs history. It's saved in this browser only.`}
+            hint={`Any ${getChain(chainId).name} RPC that serves eth_getLogs history. Defaults to Tenderly's free one.`}
             onChange={(e) => setRpcInput(e.target.value)}
           />
           <div {...styles.actions()}>
