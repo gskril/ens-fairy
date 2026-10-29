@@ -9,7 +9,7 @@ import {
 
 import { FAIRY_REFERRER } from './contracts'
 import { getRegistrarAddress } from './gift'
-import { type SupportedChainId, getChain, isSupportedChain } from './wagmi'
+import { type SupportedChainId, getChain } from './wagmi'
 
 /**
  * Registrations made through the site, found by scanning the registrar's
@@ -209,19 +209,17 @@ const byNewest = (a: Registration, b: Registration) =>
 
 // ---------- scanning ----------
 
-/** A client for the RPC the visitor entered, on the chain it reports */
-export async function connectRpc(rpcUrl: string) {
-  const probe = createPublicClient({ transport: http(rpcUrl) })
-  const chainId = await probe.getChainId()
-  if (!isSupportedChain(chainId))
-    throw new ScanError(
-      `This RPC is for chain ${chainId}. Use an Ethereum or Sepolia RPC.`
-    )
+/** A client for the RPC the visitor entered, checked to be on `chainId` */
+export async function connectRpc(rpcUrl: string, chainId: SupportedChainId) {
+  const chain = getChain(chainId)
   const client = createPublicClient({
-    chain: getChain(chainId),
+    chain,
     transport: http(rpcUrl, { retryCount: 0 }),
   })
-  return { chainId, client: client as PublicClient }
+  const actual = await client.getChainId()
+  if (actual !== chainId)
+    throw new ScanError(`This RPC is for chain ${actual}, not ${chain.name}.`)
+  return client as PublicClient
 }
 
 export async function scanRegistrations({

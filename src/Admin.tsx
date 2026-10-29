@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import type { Address } from 'viem'
 import { getEnsName } from 'viem/actions'
-import { style } from 'zyzz'
+import { cx, style } from 'zyzz'
 
 import { shortenAddress } from './components/Avatar'
 import { Nav } from './components/Nav'
@@ -27,23 +27,36 @@ import {
   type SupportedChainId,
   explorerUrl,
   getChain,
+  isSupportedChain,
   mainnet,
+  sepolia,
 } from './lib/wagmi'
 
-const RPC_KEY = 'ens-fairy:admin-rpc'
+const NETWORKS = [
+  { chainId: mainnet.id, label: 'Mainnet' },
+  { chainId: sepolia.id, label: 'Sepolia' },
+] as const
 
-function savedRpc() {
+const CHAIN_KEY = 'ens-fairy:admin-chain'
+const rpcKey = (chainId: number) => `ens-fairy:admin-rpc:${chainId}`
+
+function read(key: string) {
   try {
-    return localStorage.getItem(RPC_KEY) ?? ''
+    return localStorage.getItem(key) ?? ''
   } catch {
     return ''
   }
 }
 
+function savedChain(): SupportedChainId {
+  const chainId = Number(read(CHAIN_KEY))
+  return isSupportedChain(chainId) ? chainId : mainnet.id
+}
+
 /** A timeline of names registered through the site, read from any RPC with log history */
 export function Admin() {
-  const [rpcInput, setRpcInput] = useState(savedRpc)
-  const [chainId, setChainId] = useState<SupportedChainId>()
+  const [chainId, setChainId] = useState(savedChain)
+  const [rpcInput, setRpcInput] = useState(() => read(rpcKey(chainId)))
   const [scan, setScan] = useState<ScanState>()
   const [connectError, setConnectError] = useState<string>()
   const [running, setRunning] = useState(false)
@@ -55,13 +68,24 @@ export function Admin() {
     robots.name = 'robots'
     robots.content = 'noindex'
     document.head.appendChild(robots)
-    // Pick up where the last visit left off
-    if (rpcInput) run(rpcInput)
-    return () => {
-      robots.remove()
-      abort.current?.abort()
-    }
+    return () => robots.remove()
   }, [])
+
+  // Pick up where the last visit to this network left off
+  useEffect(() => {
+    const rpcUrl = read(rpcKey(chainId))
+    setRpcInput(rpcUrl)
+    setScan(undefined)
+    setConnectError(undefined)
+    if (rpcUrl) run(rpcUrl)
+    else stop()
+    return () => abort.current?.abort()
+  }, [chainId])
+
+  function selectNetwork(next: SupportedChainId) {
+    localStorage.setItem(CHAIN_KEY, String(next))
+    setChainId(next)
+  }
 
   async function run(rpcUrl: string, fresh = false) {
     abort.current?.abort()
@@ -71,11 +95,10 @@ export function Admin() {
     setConnectError(undefined)
 
     try {
-      const { chainId, client } = await connectRpc(rpcUrl)
+      const client = await connectRpc(rpcUrl, chainId)
       if (controller.signal.aborted) return
-      localStorage.setItem(RPC_KEY, rpcUrl)
+      localStorage.setItem(rpcKey(chainId), rpcUrl)
       if (fresh) clearCheckpoint(chainId)
-      setChainId(chainId)
       const result = await scanRegistrations({
         client,
         chainId,
@@ -89,8 +112,6 @@ export function Admin() {
     } catch (e) {
       if (controller.signal.aborted) return
       setConnectError(shortMessage(e))
-      // Results from another RPC's chain would be misleading under this one
-      setChainId(undefined)
       setScan(undefined)
     } finally {
       if (abort.current === controller) setRunning(false)
@@ -112,7 +133,25 @@ export function Admin() {
 
   return (
     <div {...styles.layout()}>
-      <Nav />
+      <Nav>
+        <div role="radiogroup" aria-label="Network" {...styles.networks()}>
+          {NETWORKS.map((network) => (
+            <button
+              key={network.chainId}
+              type="button"
+              role="radio"
+              aria-checked={chainId === network.chainId}
+              onClick={() => selectNetwork(network.chainId)}
+              {...cx(
+                styles.network(),
+                chainId === network.chainId && styles.networkActive()
+              )}
+            >
+              {network.label}
+            </button>
+          ))}
+        </div>
+      </Nav>
 
       <main {...styles.main()}>
         <header {...styles.header()}>
@@ -126,10 +165,14 @@ export function Admin() {
           <Input
             label="RPC URL"
             type="url"
-            placeholder="https://eth-mainnet.g.alchemy.com/v2/…"
+            placeholder={
+              chainId === mainnet.id
+                ? 'https://eth-mainnet.g.alchemy.com/v2/…'
+                : 'https://eth-sepolia.g.alchemy.com/v2/…'
+            }
             value={rpcInput}
             error={connectError}
-            hint="An Ethereum or Sepolia RPC that serves eth_getLogs history. It's saved in this browser only."
+            hint="It needs eth_getLogs history, and is saved in this browser only."
             onChange={(e) => setRpcInput(e.target.value)}
           />
           <div {...styles.actions()}>
@@ -142,7 +185,7 @@ export function Admin() {
                 Scan
               </Button>
             )}
-            {chainId && scan && !running && (
+            {scan && !running && (
               <Button
                 tone="ghost"
                 onClick={() => run(rpcInput.trim(), true)}
@@ -154,7 +197,7 @@ export function Admin() {
           </div>
         </form>
 
-        {chainId && scan && (
+        {scan && (
           <>
             <Summary
               chainId={chainId}
@@ -232,14 +275,13 @@ function Summary({
         {...(scan.status === 'error' ? styles.statusError() : styles.status())}
       >
         {running && <Spinner size={12} />}
-        {chainId === mainnet.id ? 'Ethereum' : 'Sepolia'} ·{' '}
         {scan.status === 'error'
           ? scan.error
           : running
-            ? `scanning… ${percent}% of blocks since ${floor.toLocaleString()}`
+            ? `Scanning… ${percent}% of blocks since ${floor.toLocaleString()}`
             : scan.status === 'done' && percent === 100
-              ? `up to date as of block ${finalizedHead?.toLocaleString()}`
-              : `stopped at ${percent}% of blocks since ${floor.toLocaleString()}`}
+              ? `Up to date as of block ${finalizedHead?.toLocaleString()}`
+              : `Stopped at ${percent}% of blocks since ${floor.toLocaleString()}`}
       </div>
     </div>
   )
@@ -392,6 +434,33 @@ function OwnerName({
 }
 
 namespace styles {
+  export const networks = style({
+    display: 'inline-flex',
+    padding: '0.25rem',
+    gap: '0.25rem',
+    borderRadius: '0.625rem',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--surface)',
+  })
+
+  export const network = style({
+    padding: '0.375rem 0.75rem',
+    border: 'none',
+    borderRadius: '0.4375rem',
+    backgroundColor: 'transparent',
+    color: 'var(--text-secondary)',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    ':hover': { color: 'var(--text)' },
+  })
+
+  export const networkActive = style({
+    backgroundColor: 'var(--blue-light)',
+    color: 'var(--blue)',
+    ':hover': { color: 'var(--blue)' },
+  })
+
   export const layout = style({
     display: 'flex',
     flexDirection: 'column',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { getEnsName } from 'viem/actions'
 import { useConnection, useDisconnect } from 'wagmi'
@@ -12,7 +12,8 @@ import { WalletModal } from './WalletModal'
 import { FairyMark } from './icons'
 import { Button } from './ui'
 
-export function Nav() {
+/** `children` take the connect button's place, for pages without a wallet */
+export function Nav({ children }: { children?: ReactNode }) {
   const { isConnected } = useConnection()
 
   return (
@@ -25,7 +26,7 @@ export function Nav() {
           ENS Fairy
         </span>
       </a>
-      <ConnectButton />
+      {children ?? <ConnectButton />}
     </nav>
   )
 }
