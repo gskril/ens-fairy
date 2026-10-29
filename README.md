@@ -48,6 +48,12 @@ bun run check sepolia  # needs CHECK_ACCOUNT set to an address holding test USDC
 
 This dry-runs a full gift against live chain state and reports whether it would succeed.
 
+### Registrations page
+
+[`/admin`](https://ensfairy.xyz/admin) shows a timeline of names registered through the site. Every registration credits `ensfairy.eth` as the referrer, which the registrar's `NameRegistered` event indexes, so the page asks the RPC for exactly those logs. It needs no password. Each network defaults to [Tenderly's free public gateway](https://docs.tenderly.co/node/rpc-reference), which serves log history in 1M-block ranges; any other RPC with `eth_getLogs` history can be entered on the page and is kept in that browser.
+
+The scan ([`src/lib/registrations.ts`](src/lib/registrations.ts)) walks backwards from the finalized block to the day the referrer shipped. It asks for 1M blocks at a time and, each time the RPC rejects a range as too wide, tries a tenth of it (100k, 10k, … down to 1). Progress is saved after every range, so later visits only scan the blocks added since.
+
 ## Deployment
 
 ```bash
