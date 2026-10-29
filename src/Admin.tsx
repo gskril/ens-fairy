@@ -172,7 +172,7 @@ export function Admin() {
             }
             value={rpcInput}
             error={connectError}
-            hint="It needs eth_getLogs history, and is saved in this browser only."
+            hint={`${getChain(chainId).name} RPC that serves eth_getLogs history. It's saved in this browser only.`}
             onChange={(e) => setRpcInput(e.target.value)}
           />
           <div {...styles.actions()}>

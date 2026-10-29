@@ -29,7 +29,8 @@ const FLOORS: Record<SupportedChainId, bigint> = {
   11155111: 12_001_423n,
 }
 
-const INITIAL_CHUNK = 100_000n
+/** A range most paid RPCs accept (Alchemy, QuickNode, dRPC); wider ones are tried after */
+const INITIAL_CHUNK = 10_000n
 const MAX_CHUNK = 1_000_000n
 /** Without a `finalized` tag, stay this far behind the tip */
 const FALLBACK_DEPTH = 96n
@@ -55,6 +56,8 @@ interface Checkpoint {
   /** The working chunk size is only valid for the RPC it was learned from */
   rpcUrl: string
   chunkSize: string
+  /** Half the smallest range the RPC rejected, so growth stops short of it */
+  chunkCeiling?: string
   /** Every block from scannedDownTo to finalizedHead has been scanned */
   finalizedHead?: string
   scannedDownTo?: string
@@ -185,7 +188,12 @@ function loadCheckpoint(chainId: number, rpcUrl: string): Checkpoint {
     if (stored?.version !== STORAGE_VERSION) return fresh
     return stored.rpcUrl === rpcUrl
       ? stored
-      : { ...stored, rpcUrl, chunkSize: fresh.chunkSize }
+      : {
+          ...stored,
+          rpcUrl,
+          chunkSize: fresh.chunkSize,
+          chunkCeiling: undefined,
+        }
   } catch {
     return fresh
   }
@@ -334,7 +342,8 @@ export async function scanRegistrations({
         if (signal.aborted) throw e
         const kind = classifyLogError(errorInfo(e))
         if (kind === 'range' && size > 1n) {
-          cp = { ...cp, chunkSize: (size / 2n).toString() }
+          const half = (size / 2n).toString()
+          cp = { ...cp, chunkSize: half, chunkCeiling: half }
           continue
         }
         throw new ScanError(
@@ -343,9 +352,8 @@ export async function scanRegistrations({
             : `Your RPC doesn't serve historical logs: ${shortMessage(e)}`
         )
       }
-      const chunkSize = (
-        size * 2n > MAX_CHUNK ? MAX_CHUNK : size * 2n
-      ).toString()
+      const ceiling = cp.chunkCeiling ? BigInt(cp.chunkCeiling) : MAX_CHUNK
+      const chunkSize = (size * 2n > ceiling ? ceiling : size * 2n).toString()
       if (direction === 'forward') {
         commit({
           ...cp,
