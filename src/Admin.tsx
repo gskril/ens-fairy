@@ -37,10 +37,10 @@ const NETWORKS = [
   { chainId: sepolia.id, label: 'Sepolia' },
 ] as const
 
-/** Tenderly's free gateways serve log history in 1M-block ranges, with CORS */
+/** The worker proxies these to Tenderly's free gateways, which serve log history in 1M-block ranges */
 const DEFAULT_RPCS: Record<SupportedChainId, string> = {
-  [mainnet.id]: 'https://gateway.tenderly.co/public/mainnet',
-  [sepolia.id]: 'https://gateway.tenderly.co/public/sepolia',
+  [mainnet.id]: `${window.location.origin}/rpc/${mainnet.id}/logs`,
+  [sepolia.id]: `${window.location.origin}/rpc/${sepolia.id}/logs`,
 }
 
 const CHAIN_KEY = 'ens-fairy:admin-chain'
@@ -183,7 +183,7 @@ export function Admin() {
             }
             value={rpcInput}
             error={connectError}
-            hint={`Any ${getChain(chainId).name} RPC that serves eth_getLogs history. Defaults to Tenderly's free one.`}
+            hint={`Any ${getChain(chainId).name} RPC that serves eth_getLogs history. Defaults to Tenderly's free one, through our proxy.`}
             onChange={(e) => setRpcInput(e.target.value)}
           />
           <div {...styles.actions()}>

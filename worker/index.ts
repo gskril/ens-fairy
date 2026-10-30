@@ -9,6 +9,13 @@ const FALLBACK_RPCS: Record<string, string> = {
   '11155111': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
 
+// For /admin's log scans: Tenderly's free gateways serve eth_getLogs in
+// 1M-block ranges, but their CORS headers aren't reliable from browsers
+const LOG_RPCS: Record<string, string> = {
+  '1': 'https://gateway.tenderly.co/public/mainnet',
+  '11155111': 'https://gateway.tenderly.co/public/sepolia',
+}
+
 // Standard JSON-RPC namespaces only, which keeps out expensive debug_/trace_
 // calls. Hosted RPCs hold no keys, so eth_ signing methods just error.
 const ALLOWED_METHOD = /^(eth_|net_version$)/
@@ -20,12 +27,11 @@ function rpcUrl(env: Env, chainId: string) {
   return undefined
 }
 
-async function handleRpc(request: Request, env: Env, chainId: string) {
+async function handleRpc(request: Request, upstream: string | undefined) {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  const upstream = rpcUrl(env, chainId)
   if (!upstream) return new Response('Unsupported chain', { status: 404 })
 
   const body = await request.text()
@@ -61,9 +67,12 @@ async function handleRpc(request: Request, env: Env, chainId: string) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
-    const match = url.pathname.match(/^\/rpc\/(\d+)\/?$/)
+    const match = url.pathname.match(/^\/rpc\/(\d+)(\/logs)?\/?$/)
 
-    if (match) return handleRpc(request, env, match[1])
+    if (match) {
+      const [, chainId, logs] = match
+      return handleRpc(request, logs ? LOG_RPCS[chainId] : rpcUrl(env, chainId))
+    }
 
     return env.ASSETS.fetch(request)
   },
