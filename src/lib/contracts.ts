@@ -18,5 +18,11 @@ export function getFairyResolver(chainId: number): Address | undefined {
 /** ensfairy.eth, credited as the referrer on every registration */
 const REFERRER_ADDRESS: Address = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
 
-/** The registrar takes the referrer as bytes32: the address left-padded */
-export const FAIRY_REFERRER: Hex = pad(REFERRER_ADDRESS, { size: 32 })
+/**
+ * The registrar takes the referrer as bytes32: the address left-padded.
+ * Lowercased because it's also a log topic filter, and some RPCs (Tenderly)
+ * match topics case-sensitively, so a checksummed one finds nothing.
+ */
+export const FAIRY_REFERRER = pad(REFERRER_ADDRESS, {
+  size: 32,
+}).toLowerCase() as Hex
