@@ -38,7 +38,7 @@ const CHUNK_DIVISOR = 10n
 /** Without a `finalized` tag, stay this far behind the tip */
 const FALLBACK_DEPTH = 96n
 // 2: chunk sizes step down tenfold from 1M, so older learned sizes are dropped
-// 3: scans with a checksummed referrer topic missed everything on Tenderly
+// 3: a one-off rescan while debugging a missed registration (the referrer topic is now lowercase)
 const STORAGE_VERSION = 3
 
 export interface Registration {

@@ -20,8 +20,8 @@ const REFERRER_ADDRESS: Address = '0x481f50a5BdcCC0bc4322C4dca04301433dED50f0'
 
 /**
  * The registrar takes the referrer as bytes32: the address left-padded.
- * Lowercased because it's also a log topic filter, and some RPCs (Tenderly)
- * match topics case-sensitively, so a checksummed one finds nothing.
+ * Lowercased, the canonical hex form, since it's also sent to arbitrary RPCs
+ * as a log topic filter.
  */
 export const FAIRY_REFERRER = pad(REFERRER_ADDRESS, {
   size: 32,
