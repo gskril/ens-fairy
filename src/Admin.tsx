@@ -80,13 +80,12 @@ export function Admin() {
     return () => robots.remove()
   }, [])
 
-  // Pick up where the last visit to this network left off
+  // Wait for the user to press Start, so they can swap in a custom RPC first.
+  // A scan still picks up where the last visit to this network left off.
   useEffect(() => {
-    const rpcUrl = savedRpc(chainId)
-    setRpcInput(rpcUrl)
+    setRpcInput(savedRpc(chainId))
     setScan(undefined)
     setConnectError(undefined)
-    run(rpcUrl)
     return () => abort.current?.abort()
   }, [chainId])
 
@@ -193,7 +192,7 @@ export function Admin() {
               </Button>
             ) : (
               <Button type="submit" disabled={!rpcInput.trim()}>
-                Scan
+                Start
               </Button>
             )}
             {scan && !running && (
