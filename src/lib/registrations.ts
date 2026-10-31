@@ -67,7 +67,8 @@ interface Checkpoint {
 }
 
 export interface ScanState {
-  status: 'scanning' | 'done' | 'error'
+  /** `saved` is a past scan read back from storage, before anything is fetched */
+  status: 'saved' | 'scanning' | 'done' | 'error'
   error?: string
   floor: bigint
   finalizedHead?: bigint
@@ -205,6 +206,29 @@ function saveCheckpoint(chainId: number, cp: Checkpoint) {
     localStorage.setItem(storageKey(chainId), JSON.stringify(cp))
   } catch {
     // A full or blocked storage just means the next visit scans again
+  }
+}
+
+/** The last scan of this network, or nothing if it has never been scanned */
+export function loadSavedScan(
+  chainId: SupportedChainId
+): ScanState | undefined {
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem(storageKey(chainId)) ?? 'null'
+    ) as Checkpoint | null
+    if (stored?.version !== STORAGE_VERSION || !stored.finalizedHead) return
+    return {
+      status: 'saved',
+      floor: FLOORS[chainId],
+      finalizedHead: BigInt(stored.finalizedHead),
+      scannedDownTo: stored.scannedDownTo
+        ? BigInt(stored.scannedDownTo)
+        : undefined,
+      registrations: stored.registrations,
+    }
+  } catch {
+    return undefined
   }
 }
 

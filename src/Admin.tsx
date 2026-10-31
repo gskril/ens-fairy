@@ -20,6 +20,7 @@ import {
   type ScanState,
   clearCheckpoint,
   connectRpc,
+  loadSavedScan,
   scanRegistrations,
   shortMessage,
 } from './lib/registrations'
@@ -80,11 +81,12 @@ export function Admin() {
     return () => robots.remove()
   }, [])
 
-  // Wait for the user to press Start, so they can swap in a custom RPC first.
-  // A scan still picks up where the last visit to this network left off.
+  // Show the last scan of this network, but wait for the user to press Start
+  // before fetching, so they can swap in a custom RPC first. The scan then
+  // picks up where the last visit left off.
   useEffect(() => {
     setRpcInput(savedRpc(chainId))
-    setScan(undefined)
+    setScan(loadSavedScan(chainId))
     setConnectError(undefined)
     return () => abort.current?.abort()
   }, [chainId])
@@ -122,7 +124,7 @@ export function Admin() {
     } catch (e) {
       if (controller.signal.aborted) return
       setConnectError(shortMessage(e))
-      setScan(undefined)
+      setScan(loadSavedScan(chainId))
     } finally {
       if (abort.current === controller) setRunning(false)
     }
@@ -289,9 +291,11 @@ function Summary({
           ? scan.error
           : running
             ? `Scanning… ${percent}% of blocks since ${floor.toLocaleString()}`
-            : scan.status === 'done' && percent === 100
-              ? `Up to date as of block ${finalizedHead?.toLocaleString()}`
-              : `Stopped at ${percent}% of blocks since ${floor.toLocaleString()}`}
+            : scan.status === 'saved'
+              ? `Saved from a scan up to block ${finalizedHead?.toLocaleString()}${percent < 100 ? ` (${percent}% done)` : ''}. Press Start to update.`
+              : scan.status === 'done' && percent === 100
+                ? `Up to date as of block ${finalizedHead?.toLocaleString()}`
+                : `Stopped at ${percent}% of blocks since ${floor.toLocaleString()}`}
       </div>
     </div>
   )
